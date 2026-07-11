@@ -1,0 +1,55 @@
+<div style="font-family: var(--font-mono); font-size: 11.5px; background: #0d1117; color: #c9d1d9; border-radius: 8px; padding: 14px; line-height: 1.5;">
+
+  <div style="display:flex; gap:2px; border-bottom:1px solid #30363d; padding-bottom:0; margin-bottom:0;">
+    <div style="padding:5px 14px; background:#161b22; border:1px solid #30363d; border-bottom:none; color:#8b949e;">Proxy</div>
+    <div style="padding:5px 14px; background:#0d1117; border:1px solid #58a6ff; border-bottom:none; color:#58a6ff;">History</div>
+    <div style="padding:5px 14px; background:#161b22; border:1px solid #30363d; border-bottom:none; color:#8b949e;">Repeater</div>
+    <div style="padding:5px 14px; background:#161b22; border:1px solid #30363d; border-bottom:none; color:#8b949e;">Decoder</div>
+  </div>
+
+  <div style="display:flex; gap:12px; border:1px solid #30363d; padding:6px 10px; color:#6e7681; font-size:11px;">
+    <span>Filter: <span style="color:#c9d1d9;">host contains ___</span></span>
+    <span>Method: <span style="color:#c9d1d9;">ALL</span></span>
+    <span>Status: <span style="color:#c9d1d9;">ALL</span></span>
+  </div>
+
+  <div style="border:1px solid #30363d; border-top:none;">
+    <div style="display:flex; gap:10px; padding:4px 8px; color:#6e7681; border-bottom:1px solid #30363d;">
+      <span style="width:26px;">#</span><span style="width:46px;">METHOD</span><span style="flex:1;">HOST</span><span style="flex:1;">PATH</span><span style="width:40px;">STATUS</span><span style="width:50px;">SIZE</span>
+    </div>
+    <div style="display:flex; gap:10px; padding:3px 8px; color:#8b949e;"><span style="width:26px;">1</span><span style="width:46px;">GET</span><span style="flex:1;">api.stripe.com</span><span style="flex:1;">/v1/charges</span><span style="width:40px; color:#3fb950;">200</span><span style="width:50px;">1.2kb</span></div>
+    <div style="display:flex; gap:10px; padding:3px 8px; color:#8b949e;"><span style="width:26px;">2</span><span style="width:46px;">POST</span><span style="flex:1;">auth.example.com</span><span style="flex:1;">/login</span><span style="width:40px; color:#e3b341;">302</span><span style="width:50px;">0.4kb</span></div>
+    <div style="display:flex; gap:10px; padding:3px 8px; background:#1f6feb33; border-left:2px solid #58a6ff; color:#c9d1d9;"><span style="width:26px;">3</span><span style="width:46px;">GET</span><span style="flex:1;">api.example.com</span><span style="flex:1;">/user/42</span><span style="width:40px; color:#f85149;">401</span><span style="width:50px;">0.1kb</span></div>
+    <div style="display:flex; gap:10px; padding:3px 8px; color:#8b949e;"><span style="width:26px;">4</span><span style="width:46px;">PUT</span><span style="flex:1;">api.example.com</span><span style="flex:1;">/user/42</span><span style="width:40px; color:#3fb950;">200</span><span style="width:50px;">0.3kb</span></div>
+  </div>
+
+  <div style="display:flex; gap:8px; margin-top:8px;">
+    <div style="flex:1; border:1px solid #30363d; border-radius:4px;">
+      <div style="display:flex; gap:2px; border-bottom:1px solid #30363d; padding:2px;">
+        <span style="padding:3px 10px; background:#161b22; color:#58a6ff; border-radius:2px;">Pretty</span>
+        <span style="padding:3px 10px; color:#6e7681;">Raw</span>
+        <span style="padding:3px 10px; color:#6e7681;">Hex</span>
+      </div>
+      <div style="padding:8px;">
+        <div style="color:#58a6ff;">GET /user/42 HTTP/1.1</div>
+        <div style="color:#8b949e;">Host: api.example.com</div>
+        <div style="color:#8b949e;">Authorization: Bearer ***</div>
+        <div style="color:#8b949e;">Accept: application/json</div>
+      </div>
+    </div>
+    <div style="flex:1; border:1px solid #30363d; border-radius:4px;">
+      <div style="display:flex; gap:2px; border-bottom:1px solid #30363d; padding:2px;">
+        <span style="padding:3px 10px; background:#161b22; color:#58a6ff; border-radius:2px;">Pretty</span>
+        <span style="padding:3px 10px; color:#6e7681;">Raw</span>
+        <span style="padding:3px 10px; color:#6e7681;">Hex</span>
+      </div>
+      <div style="padding:8px;">
+        <div style="color:#f85149;">HTTP/1.1 401 Unauthorized</div>
+        <div style="color:#8b949e;">Content-Type: application/json</div>
+        <div style="color:#c9d1d9; margin-top:4px;">{"error": "token_expired"}</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:8px; color:#6e7681; font-size:10.5px;">↑/↓ select row · Tab cycle panes · r → send to Repeater</div>
+</div>
