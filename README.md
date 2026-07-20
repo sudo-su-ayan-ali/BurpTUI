@@ -22,7 +22,7 @@ A terminal-based HTTP/HTTPS interception proxy inspired by Burp Suite, built ent
 
 ## Project Overview
 
-![[Pasted image.png]]
+![alt text](<Pasted image.png>)
 
 BurpTUI is a man-in-the-middle (MITM) HTTP/HTTPS proxy that runs in your terminal. It intercepts browser traffic, displays requests and responses in real time, and lets you modify and replay them — all without leaving the terminal.
 
