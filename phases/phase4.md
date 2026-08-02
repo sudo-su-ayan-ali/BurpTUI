@@ -3,6 +3,9 @@
 ## Goal
 The goal of this phase is to transition the application's volatile in-memory traffic storage to a robust, persistent database backend. This enables the user to maintain session history across application restarts, handle massive volumes of traffic without memory exhaustion, and perform efficient database-backed searches and filtering directly from the History tab.
 
+## Prerequisites
+Depends on Phase 3. The HTTPS MITM proxy must be fully functional, with all HTTP and HTTPS traffic flowing through the TsQueue into the TUI History tab.
+
 ---
 
 ## 1. Integrate SQLite3 (WAL Mode)
@@ -26,20 +29,26 @@ SQLite is an ideal embedded database for a proxy tool, but high-throughput HTTP 
 A dedicated storage abstraction layer is required to cleanly bridge the parsed HTTP data from the proxy sessions to the underlying relational tables.
 
 ### Step 2.1: Schema Design
-- Design a normalized or semi-normalized relational schema to store HTTP traffic.
+- Design a normalized or semi-normalized relational schema to store `HttpTransaction` records.
 - Create a primary `requests` table containing indexed columns for searchable metadata (ID, timestamp, method, host, path, status code, content type, and content length).
 - Design a mechanism for payload storage. Since HTTP bodies can be massive (e.g., image or video downloads), consider storing headers and raw bodies in a separate `payloads` table linked by a foreign key. Alternatively, for extreme performance, write massive payloads directly to the local filesystem and store only the file path in the database.
 - Create SQL indexes on frequently queried columns like `host`, `method`, and `status_code` to ensure rapid filtering.
 
 ### Step 2.2: Data Ingestion Pipeline (The Store API)
 - Implement a `SqliteStore` class to encapsulate all database interactions.
-- Create a thread-safe asynchronous write queue. Instead of blocking the networking threads on database inserts, push fully parsed HTTP transaction objects into this queue.
+- Create a thread-safe asynchronous write queue. Instead of blocking the networking threads on database inserts, push fully parsed `HttpTransaction` objects into this queue.
 - Establish a dedicated background database writer thread that continuously consumes this queue, batching multiple transaction inserts into single SQLite transactions (using `BEGIN TRANSACTION; ... COMMIT;`) to drastically increase write throughput.
+- This step replaces the volatile in-memory storage and the TsQueue consumer logic from Phase 2. The TsQueue now feeds into the SqliteStore writer thread instead of directly into the TUI state.
 
 ### Step 2.3: Data Retrieval API
 - Implement paginated or windowed read functions in the `SqliteStore` API. The TUI should not attempt to load 100,000 rows into memory simultaneously.
 - Create functions to fetch a limited sliding window of transactions (e.g., `fetch_latest(limit=100)`) specifically formatted for the master list view.
 - Create detail-fetching functions that only retrieve the heavy HTTP headers and body blobs when the user explicitly highlights a specific request in the TUI list.
+
+### Step 2.4: Database Migration Strategy
+- Establish a robust database migration strategy to handle schema changes seamlessly between different versions of the application.
+- Implement a `schema_version` table within the database to reliably track the current schema state.
+- Create a systematic approach for executing versioned migration scripts or functions sequentially during application startup, ensuring existing user data remains intact while applying new schema updates.
 
 ---
 
@@ -55,11 +64,42 @@ With traffic now residing in a queryable database, the History tab can be upgrad
 ### Step 3.2: Database-Backed Filtering
 - When the search string changes, introduce a slight debounce (wait a few milliseconds) to avoid spamming the database with queries on every single keystroke.
 - Invoke a custom query on the `SqliteStore` using `LIKE` clauses or exact matches against the `host`, `path`, or `method` columns based on the active search string.
-- Retrieve the new filtered list of transaction metadata from the database.
+- Retrieve the new filtered list of `HttpTransaction` metadata from the database.
 
-### Step 3.3: Dynamic View Refresh
+### Step 3.3: Advanced Filter Operators
+- Augment the basic text search by introducing advanced filtering operators to provide precise control over the displayed traffic.
+- Implement UI controls and corresponding database queries to support filtering by HTTP method using a dropdown selection.
+- Add functionality to filter by specific status code ranges (e.g., isolating 2xx success responses, 3xx redirects, 4xx client errors, or 5xx server errors).
+- Implement host-based scoping to restrict the visible transaction history to one or more specific target domains.
+
+### Step 3.4: Dynamic View Refresh
 - Replace the History tab's active list model with the newly fetched filtered dataset.
 - Trigger a UI re-render. Ensure the list component retains focus and gracefully handles edge cases where the filtered results yield zero rows (e.g., displaying a "No matches found" placeholder).
 - When the user clears the search bar, revert the database query to fetch the standard, unfiltered chronological traffic stream, seamlessly returning the UI to its default state.
+
+---
+
+## 4. Cross-Cutting Concerns
+
+As the application relies heavily on persistence, addressing system-wide architectural considerations is essential.
+
+### Database Integrity
+- Implement robust error handling strategies to address potential database integrity issues, such as corrupt database files resulting from sudden power loss or application crashes.
+- Ensure all failed write operations are gracefully handled without crashing the application, providing appropriate logging and potential fallback mechanisms.
+
+### Performance and Backpressure
+- Establish monitoring capabilities to track the write queue depth (the `TsQueue` length).
+- Implement backpressure detection mechanisms to identify scenarios where the network ingestion rate significantly outpaces the database writer thread's throughput, potentially applying flow control to the networking threads to prevent unbounded memory growth.
+
+---
+
+## Completion Checklist
+
+- [ ] SQLite database is created with WAL mode enabled on first launch
+- [ ] All intercepted HTTP/HTTPS traffic is persisted to the database
+- [ ] History tab loads data from the database instead of in-memory storage
+- [ ] Search/filter input dynamically queries the database and updates the list
+- [ ] Application restarts preserve all previously captured traffic
+- [ ] Large traffic volumes (10,000+ requests) do not degrade UI responsiveness
 
 By executing this phase, the proxy evolves from a temporary, memory-bound tool into a robust, professional-grade utility capable of handling and analyzing massive, persistent traffic datasets.

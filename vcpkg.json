@@ -1,0 +1,14 @@
+{
+  "name": "burptui",
+  "version": "0.1.0",
+  "description": "Terminal-based HTTP/HTTPS interception proxy inspired by Burp Suite",
+  "dependencies": [
+    "boost-asio",
+    "boost-system",
+    "openssl",
+    "ftxui",
+    "sqlite3",
+    "llhttp",
+    "gtest"
+  ]
+}
