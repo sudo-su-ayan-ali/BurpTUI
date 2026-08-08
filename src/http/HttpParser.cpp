@@ -5,8 +5,8 @@ namespace BurpTUI {
 // Pimpl — full llhttp integration deferred to Phase 2.
 struct HttpParser::Impl {};
 
-HttpParser::HttpParser()  : impl_(new Impl{}) {}
-HttpParser::~HttpParser() { delete impl_; }
+HttpParser::HttpParser()  : impl_(std::make_unique<Impl>()) {}
+HttpParser::~HttpParser() { }
 
 bool HttpParser::feedRequest(std::string_view /*data*/)  { return false; }
 bool HttpParser::feedResponse(std::string_view /*data*/) { return false; }

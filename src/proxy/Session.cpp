@@ -8,9 +8,9 @@ struct Session::Impl {
 };
 
 Session::Session(std::uint64_t id, const std::string& remoteIp)
-    : impl_(new Impl{id, remoteIp})
+    : impl_(std::make_unique<Impl>(id, remoteIp))
 {}
-Session::~Session() { delete impl_; }
+Session::~Session() { }
 
 std::uint64_t Session::id()       const { return impl_->id; }
 const std::string& Session::remoteIp() const { return impl_->remoteIp; }

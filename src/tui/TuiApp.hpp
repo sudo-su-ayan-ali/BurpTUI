@@ -17,6 +17,9 @@ private:
     const Config&                    cfg_;
     ftxui::ScreenInteractive         screen_;
     ftxui::Component                 root_;
+    
+    int                              activeTab_ = 0;
+    std::vector<std::string>         tabNames_;
 
     void buildLayout();
 };

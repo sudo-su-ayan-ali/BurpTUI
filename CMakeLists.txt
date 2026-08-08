@@ -20,12 +20,16 @@ find_package(OpenSSL REQUIRED)
 find_package(ftxui CONFIG REQUIRED)
 find_package(SQLite3 REQUIRED)
 
-# llhttp: prefer vcpkg's unofficial package, fall back to pkg-config
+# llhttp: try unofficial-llhttp, llhttp, or fallback to pkgconfig
 find_package(unofficial-llhttp CONFIG QUIET)
 if(NOT unofficial-llhttp_FOUND)
-    find_package(PkgConfig REQUIRED)
-    pkg_check_modules(LLHTTP REQUIRED IMPORTED_TARGET llhttp)
+    find_package(llhttp CONFIG QUIET)
+    if(NOT llhttp_FOUND)
+        find_package(PkgConfig REQUIRED)
+        pkg_check_modules(LLHTTP REQUIRED IMPORTED_TARGET llhttp)
+    endif()
 endif()
+
 
 # ── Source lists ─────────────────────────────────────────
 set(BURPTUI_SOURCES
@@ -86,9 +90,17 @@ target_link_libraries(burptui PRIVATE
 
 if(unofficial-llhttp_FOUND)
     target_link_libraries(burptui PRIVATE unofficial::llhttp::llhttp)
+elseif(llhttp_FOUND)
+    # Check both potential target names provided by vcpkg's llhttp port
+    if(TARGET llhttp::llhttp_static)
+        target_link_libraries(burptui PRIVATE llhttp::llhttp_static)
+    else()
+        target_link_libraries(burptui PRIVATE llhttp::llhttp)
+    endif()
 else()
     target_link_libraries(burptui PRIVATE PkgConfig::LLHTTP)
 endif()
+
 
 # ── Tests ────────────────────────────────────────────────
 option(BUILD_TESTS "Build unit tests" ON)

@@ -1,4 +1,5 @@
 #pragma once
+#include <memory>
 #include "HttpRequest.hpp"
 #include "HttpResponse.hpp"
 #include <optional>
@@ -21,7 +22,7 @@ public:
 
 private:
     struct Impl;
-    Impl* impl_ = nullptr;
+    std::unique_ptr<Impl> impl_;
 };
 
 } // namespace BurpTUI

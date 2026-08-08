@@ -21,12 +21,11 @@ TuiApp::~TuiApp() = default;
 
 void TuiApp::buildLayout() {
     // Tab entries
-    std::vector<std::string> tabNames = {
+    tabNames_ = {
         " Proxy ", " History ", " Repeater ", " Decoder "
     };
-    int activeTab = 0;
 
-    auto tabToggle = Toggle(&tabNames, &activeTab);
+    auto tabToggle = Toggle(&tabNames_, &activeTab_);
 
     auto tabContents = Container::Tab(
         {
@@ -35,19 +34,19 @@ void TuiApp::buildLayout() {
             MakeRepeaterTab(),
             MakeDecoderTab(),
         },
-        &activeTab);
+        &activeTab_);
 
     auto layout = Container::Vertical({tabToggle, tabContents});
 
     root_ = Renderer(layout, [&, tabToggle, tabContents] {
-        return vbox({
+        return vbox(Elements{
             text(" BurpTUI ") | bold | center,
             separator(),
             tabToggle->Render(),
             separator(),
             tabContents->Render() | flex,
             separator(),
-            hbox({
+            hbox(Elements{
                 text("  q: Quit") | dim,
                 filler(),
                 text("BurpTUI v0.1  ") | dim,

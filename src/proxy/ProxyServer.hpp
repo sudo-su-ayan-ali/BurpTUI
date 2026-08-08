@@ -1,4 +1,5 @@
 #pragma once
+#include <memory>
 #include <string>
 #include <cstdint>
 #include <functional>
@@ -22,7 +23,7 @@ public:
 
 private:
     struct Impl;
-    Impl* impl_ = nullptr;
+    std::unique_ptr<Impl> impl_;
 };
 
 } // namespace BurpTUI

@@ -49,9 +49,16 @@ target_link_libraries(burptui_lib PUBLIC
 )
 if(unofficial-llhttp_FOUND)
     target_link_libraries(burptui_lib PUBLIC unofficial::llhttp::llhttp)
+elseif(llhttp_FOUND)
+    if(TARGET llhttp::llhttp_static)
+        target_link_libraries(burptui_lib PUBLIC llhttp::llhttp_static)
+    else()
+        target_link_libraries(burptui_lib PUBLIC llhttp::llhttp)
+    endif()
 else()
     target_link_libraries(burptui_lib PUBLIC PkgConfig::LLHTTP)
 endif()
+
 
 # ── Individual test executables ──────────────────────────
 function(add_burptui_test name source)

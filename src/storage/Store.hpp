@@ -3,6 +3,7 @@
 #include <string_view>
 #include <cstdint>
 #include <vector>
+#include <optional>
 
 namespace BurpTUI {
 

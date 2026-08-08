@@ -9,10 +9,10 @@ struct CertGenerator::Impl {
 
 CertGenerator::CertGenerator(const std::string& caKeyPath,
                               const std::string& caCertPath)
-    : impl_(new Impl{caKeyPath, caCertPath})
+    : impl_(std::make_unique<Impl>(caKeyPath, caCertPath))
 {}
 
-CertGenerator::~CertGenerator() { delete impl_; }
+CertGenerator::~CertGenerator() { }
 
 CertGenerator::CertKeyPair CertGenerator::generate(const std::string& /*hostname*/) {
     // TODO: OpenSSL X.509 signing — Phase 2

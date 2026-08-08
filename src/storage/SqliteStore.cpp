@@ -8,7 +8,7 @@ struct SqliteStore::Impl {
     sqlite3* db = nullptr;
 };
 
-SqliteStore::SqliteStore(const std::string& dbPath) : impl_(new Impl{}) {
+SqliteStore::SqliteStore(const std::string& dbPath) : impl_(std::make_unique<Impl>()) {
     if (sqlite3_open(dbPath.c_str(), &impl_->db) != SQLITE_OK)
         throw std::runtime_error("Cannot open database: " + dbPath);
     // Create table if not exists
@@ -30,7 +30,7 @@ SqliteStore::SqliteStore(const std::string& dbPath) : impl_(new Impl{}) {
 }
 
 SqliteStore::~SqliteStore() {
-    if (impl_) { sqlite3_close(impl_->db); delete impl_; }
+    if (impl_) { sqlite3_close(impl_->db); }
 }
 
 void SqliteStore::save(const ProxyEntry& /*entry*/) {

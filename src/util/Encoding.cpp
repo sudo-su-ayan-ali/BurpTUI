@@ -1,6 +1,7 @@
 #include "util/Encoding.hpp"
 #include <array>
 #include <stdexcept>
+#include <cstdint>
 
 namespace BurpTUI::Encoding {
 

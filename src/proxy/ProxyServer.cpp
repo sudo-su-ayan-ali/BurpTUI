@@ -11,10 +11,10 @@ struct ProxyServer::Impl {
 ProxyServer::ProxyServer(const std::string& host,
                          std::uint16_t       port,
                          EventCallback       /*onEvent*/)
-    : impl_(new Impl{host, port})
+    : impl_(std::make_unique<Impl>(host, port))
 {}
 
-ProxyServer::~ProxyServer() { stop(); delete impl_; }
+ProxyServer::~ProxyServer() { stop(); }
 
 void ProxyServer::start() { impl_->running = true;  /* TODO: Phase 2 */ }
 void ProxyServer::stop()  { impl_->running = false; /* TODO */ }
