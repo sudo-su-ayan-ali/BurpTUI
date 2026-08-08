@@ -1,0 +1,19 @@
+# Build artefacts
+build/
+.vcpkg/
+
+# vcpkg downloads & packages cached here — do NOT commit
+vcpkg_installed/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*~
+
+# compile_commands (symlink OK, generated file not)
+compile_commands.json
+
+# Runtime artefacts
+*.db
+*.log

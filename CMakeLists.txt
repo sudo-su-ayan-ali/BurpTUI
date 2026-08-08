@@ -1,24 +1,34 @@
 cmake_minimum_required(VERSION 3.20)
 project(burptui CXX)
 
+# ── Language standard ────────────────────────────────────
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+# ── vcpkg toolchain (auto-detected when VCPKG_ROOT is set) ──
+if(DEFINED ENV{VCPKG_ROOT} AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
+    set(CMAKE_TOOLCHAIN_FILE
+        "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+        CACHE STRING "vcpkg toolchain")
+endif()
 
 # ── Dependencies ─────────────────────────────────────────
 find_package(Boost REQUIRED COMPONENTS system)
 find_package(OpenSSL REQUIRED)
 find_package(ftxui CONFIG REQUIRED)
 find_package(SQLite3 REQUIRED)
-# llhttp is typically found via pkg-config or vcpkg
+
+# llhttp: prefer vcpkg's unofficial package, fall back to pkg-config
 find_package(unofficial-llhttp CONFIG QUIET)
 if(NOT unofficial-llhttp_FOUND)
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(LLHTTP REQUIRED IMPORTED_TARGET llhttp)
 endif()
 
-# ── Main executable ──────────────────────────────────────
-add_executable(burptui
+# ── Source lists ─────────────────────────────────────────
+set(BURPTUI_SOURCES
     src/main.cpp
 
     # App coordinator
@@ -46,13 +56,23 @@ add_executable(burptui
     src/tui/HistoryTab.cpp
     src/tui/RepeaterTab.cpp
     src/tui/DecoderTab.cpp
+    src/tui/Widgets.cpp
 
     # Utilities
     src/util/Logger.cpp
     src/util/Encoding.cpp
 )
 
-target_include_directories(burptui PRIVATE ${CMAKE_SOURCE_DIR}/src)
+# ── Main executable ──────────────────────────────────────
+add_executable(burptui ${BURPTUI_SOURCES})
+
+target_include_directories(burptui PRIVATE
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_options(burptui PRIVATE
+    -Wall -Wextra -Wpedantic
+)
 
 target_link_libraries(burptui PRIVATE
     Boost::system
@@ -64,7 +84,6 @@ target_link_libraries(burptui PRIVATE
     SQLite::SQLite3
 )
 
-# Link llhttp depending on how it was found
 if(unofficial-llhttp_FOUND)
     target_link_libraries(burptui PRIVATE unofficial::llhttp::llhttp)
 else()
