@@ -55,8 +55,16 @@ void TuiApp::buildLayout() {
     });
 
     root_ = CatchEvent(root_, [&](Event event) {
-        if (event == Event::Character('q')) {
+        if (event == Event::Character('q') || event == Event::Special("\x03")) { // \x03 is Ctrl+C
             screen_.ExitLoopClosure()();
+            return true;
+        }
+        if (event == Event::Tab) {
+            activeTab_ = (activeTab_ + 1) % tabNames_.size();
+            return true;
+        }
+        if (event == Event::TabReverse) {
+            activeTab_ = (activeTab_ + tabNames_.size() - 1) % tabNames_.size();
             return true;
         }
         return false;
