@@ -13,6 +13,8 @@ public:
     HttpParser();
     ~HttpParser();
 
+    void reset();
+
     /// Feed raw bytes; returns true when a complete message is ready.
     bool feedRequest(std::string_view data);
     bool feedResponse(std::string_view data);

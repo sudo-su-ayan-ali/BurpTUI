@@ -3,6 +3,12 @@
 
 namespace BurpTUI {
 
+std::string HttpResponse::header(std::string_view name) const {
+    for (const auto& [k, v] : headers)
+        if (k == name) return v;
+    return {};
+}
+
 std::string HttpResponse::serialize() const {
     std::ostringstream oss;
     oss << version << " " << statusCode << " " << statusText << "\r\n";

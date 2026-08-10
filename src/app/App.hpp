@@ -1,19 +1,23 @@
 #pragma once
 #include "Config.hpp"
+#include "util/TsQueue.hpp"
+#include "http/HttpTransaction.hpp"
+#include <memory>
 
 namespace BurpTUI {
 
-/// Top-level application coordinator.
+class ProxyServer;
+
 class App {
 public:
     explicit App(Config cfg = {});
     ~App();
-
-    /// Blocking entry point; returns the process exit code.
     int run();
 
 private:
     Config cfg_;
+    std::shared_ptr<TsQueue<HttpTransaction>> txQueue_;
+    std::unique_ptr<ProxyServer> proxy_;
 };
 
 } // namespace BurpTUI

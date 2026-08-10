@@ -10,8 +10,10 @@ namespace BurpTUI {
 
 using namespace ftxui;
 
-TuiApp::TuiApp(const Config& cfg)
+TuiApp::TuiApp(const Config& cfg,
+               std::shared_ptr<TsQueue<HttpTransaction>> txQueue)
     : cfg_(cfg)
+    , txQueue_(std::move(txQueue))
     , screen_(ScreenInteractive::Fullscreen())
 {
     buildLayout();
@@ -20,17 +22,13 @@ TuiApp::TuiApp(const Config& cfg)
 TuiApp::~TuiApp() = default;
 
 void TuiApp::buildLayout() {
-    // Tab entries
-    tabNames_ = {
-        " Proxy ", " History ", " Repeater ", " Decoder "
-    };
-
+    tabNames_ = {" Proxy ", " History ", " Repeater ", " Decoder "};
     auto tabToggle = Toggle(&tabNames_, &activeTab_);
 
     auto tabContents = Container::Tab(
         {
             MakeProxyTab(),
-            MakeHistoryTab(),
+            MakeHistoryTab(txQueue_, &screen_),
             MakeRepeaterTab(),
             MakeDecoderTab(),
         },
@@ -55,7 +53,7 @@ void TuiApp::buildLayout() {
     });
 
     root_ = CatchEvent(root_, [&](Event event) {
-        if (event == Event::Character('q') || event == Event::Special("\x03")) { // \x03 is Ctrl+C
+        if (event == Event::Character('q') || event == Event::Special("\x03")) {
             screen_.ExitLoopClosure()();
             return true;
         }

@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace BurpTUI {
@@ -12,6 +13,7 @@ struct HttpResponse {
     std::vector<std::pair<std::string, std::string>> headers;
     std::string              body;
 
+    [[nodiscard]] std::string header(std::string_view name) const;
     [[nodiscard]] std::string serialize() const;
 };
 

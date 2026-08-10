@@ -1,25 +1,62 @@
 #pragma once
 #include <memory>
+#include <functional>
+#include <atomic>
+#include <array>
 #include <string>
-#include <cstdint>
+#include <boost/asio.hpp>
+#include "http/HttpTransaction.hpp"
+#include "http/HttpParser.hpp"
 
 namespace BurpTUI {
 
-/// Opaque forward declaration — implementation uses Boost.Asio.
-class Session {
+using TransactionCallback = std::function<void(HttpTransaction)>;
+
+/// Handles one client connection: reads HTTP request, connects to upstream,
+/// forwards traffic bidirectionally, parses and logs the transaction.
+class Session : public std::enable_shared_from_this<Session> {
 public:
-    explicit Session(std::uint64_t id, const std::string& remoteIp);
+    Session(boost::asio::ip::tcp::socket clientSocket,
+            TransactionCallback onTransaction,
+            std::atomic<int>& nextId);
     ~Session();
-
-    std::uint64_t id() const;
-    const std::string& remoteIp() const;
-
+    
     void start();
     void close();
 
 private:
-    struct Impl;
-    std::unique_ptr<Impl> impl_;
+    void readClient();
+    void handleClientRead(boost::system::error_code ec, std::size_t bytes_transferred);
+    void connectUpstream(const std::string& host, const std::string& port);
+    void handleUpstreamConnect(boost::system::error_code ec, boost::asio::ip::tcp::resolver::results_type results);
+    void writeUpstream();
+    void handleUpstreamWrite(boost::system::error_code ec, std::size_t bytes_transferred);
+    void readUpstream();
+    void handleUpstreamRead(boost::system::error_code ec, std::size_t bytes_transferred);
+    void writeClient(const std::string& data);
+    void handleClientWrite(boost::system::error_code ec, std::size_t bytes_transferred);
+    void sendErrorResponse(int statusCode, const std::string& statusText);
+    void resetTimer();
+    void handleTimeout(boost::system::error_code ec);
+
+    boost::asio::ip::tcp::socket clientSocket_;
+    boost::asio::ip::tcp::socket serverSocket_;
+    boost::asio::ip::tcp::resolver resolver_;
+    boost::asio::steady_timer timer_;
+    TransactionCallback onTransaction_;
+    std::atomic<int>& nextId_;
+
+    std::array<char, 8192> clientBuffer_;
+    std::array<char, 8192> serverBuffer_;
+    
+    HttpParser parser_;
+
+    std::string clientData_;
+    std::string serverData_;
+    std::string pendingClientWrite_;
+    
+    HttpTransaction currentTransaction_;
+    bool isConnect_ = false;
 };
 
 } // namespace BurpTUI

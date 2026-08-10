@@ -2,23 +2,19 @@
 #include <memory>
 #include <string>
 #include <cstdint>
-#include <functional>
+#include "proxy/Session.hpp"  // for TransactionCallback
 
 namespace BurpTUI {
 
-/// Listens on the configured port and spawns Sessions/MitmSessions.
 class ProxyServer {
 public:
-    using EventCallback = std::function<void(const std::string& event)>;
-
     explicit ProxyServer(const std::string& host,
-                         std::uint16_t       port,
-                         EventCallback       onEvent = {});
+                         std::uint16_t port,
+                         TransactionCallback onTransaction = {});
     ~ProxyServer();
 
-    void start();  ///< Non-blocking; runs the io_context in a thread pool.
-    void stop();
-
+    void start();  ///< Non-blocking; launches io_context on a background thread
+    void stop();   ///< Signals io_context to stop and joins the thread
     bool isRunning() const;
 
 private:
