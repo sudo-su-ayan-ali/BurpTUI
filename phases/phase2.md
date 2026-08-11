@@ -110,9 +110,9 @@ The final step connects the live backend logic to the FTXUI frontend you built i
 
 ## Completion Checklist
 
-- [ ] Proxy server binds to configurable port and accepts TCP connections
-- [ ] HTTP requests from the browser are parsed and forwarded to upstream servers
-- [ ] Responses are relayed back to the browser correctly
-- [ ] Keep-alive connections handle multiple sequential requests
-- [ ] Captured traffic appears in the History tab in real time
-- [ ] Application exits cleanly, shutting down all active sessions
+- [x] Proxy server binds to configurable port and accepts TCP connections
+- [x] HTTP requests from the browser are parsed and forwarded to upstream servers
+- [x] Responses are relayed back to the browser correctly
+- [x] Keep-alive connections handle multiple sequential requests
+- [x] Captured traffic appears in the History tab in real time
+- [x] Application exits cleanly, shutting down all active sessions

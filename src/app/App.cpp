@@ -15,17 +15,20 @@ App::~App() {
 }
 
 int App::run() {
+    TuiApp tui(cfg_, txQueue_);
+    auto trigger = tui.getUpdateTrigger();
     auto queue = txQueue_;
+    
     proxy_ = std::make_unique<ProxyServer>(
         cfg_.listenHost, cfg_.listenPort,
-        [queue](HttpTransaction tx) {
+        [queue, trigger](HttpTransaction tx) {
             queue->push(std::move(tx));
+            if (trigger) trigger();
         });
 
     proxy_->start();
     Logger::instance().info("Proxy started on " + cfg_.listenHost + ":" + std::to_string(cfg_.listenPort));
 
-    TuiApp tui(cfg_, txQueue_);
     tui.run();
 
     proxy_->stop();

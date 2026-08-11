@@ -21,6 +21,12 @@ TuiApp::TuiApp(const Config& cfg,
 
 TuiApp::~TuiApp() = default;
 
+std::function<void()> TuiApp::getUpdateTrigger() {
+    return [this]() {
+        screen_.PostEvent(ftxui::Event::Custom);
+    };
+}
+
 void TuiApp::buildLayout() {
     tabNames_ = {" Proxy ", " History ", " Repeater ", " Decoder "};
     auto tabToggle = Toggle(&tabNames_, &activeTab_);

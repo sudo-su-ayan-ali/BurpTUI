@@ -5,6 +5,7 @@
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/screen_interactive.hpp>
 #include <memory>
+#include <functional>
 
 namespace BurpTUI {
 
@@ -14,6 +15,7 @@ public:
            std::shared_ptr<TsQueue<HttpTransaction>> txQueue);
     ~TuiApp();
     void run();
+    std::function<void()> getUpdateTrigger();
 
 private:
     const Config& cfg_;
