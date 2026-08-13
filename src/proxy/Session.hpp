@@ -28,7 +28,7 @@ public:
 private:
     void readClient();
     void handleClientRead(boost::system::error_code ec, std::size_t bytes_transferred);
-    void connectUpstream(const std::string& host, const std::string& port);
+    void connectUpstream();
     void handleUpstreamConnect(boost::system::error_code ec, boost::asio::ip::tcp::resolver::results_type results);
     void writeUpstream();
     void handleUpstreamWrite(boost::system::error_code ec, std::size_t bytes_transferred);
@@ -37,6 +37,9 @@ private:
     void writeClient(std::string data);
     void doClientWrite();
     void handleClientWrite(boost::system::error_code ec, std::size_t bytes_transferred);
+    void writeServerBlind(std::string data);
+    void doServerWrite();
+    void handleServerWrite(boost::system::error_code ec, std::size_t bytes_transferred);
     void sendErrorResponse(int statusCode, const std::string& statusText);
     void resetTimer();
     void handleTimeout(boost::system::error_code ec);
@@ -55,7 +58,11 @@ private:
 
     std::string clientData_;
     std::string serverData_;
-    std::deque<std::string> writeQueue_;  ///< Serialised write queue — prevents async_write buffer aliasing
+    std::deque<std::string> writeQueue_;  ///< Serialised write queue to client
+    std::deque<std::string> writeServerQueue_;  ///< Serialised write queue to server (for CONNECT tunnel)
+    
+    std::string upstreamHost_;
+    std::string upstreamPort_;
     
     HttpTransaction currentTransaction_;
     bool isConnect_ = false;

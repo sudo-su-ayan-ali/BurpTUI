@@ -110,24 +110,30 @@ ftxui::Component MakeHistoryTab(
 
     auto layout = Container::Horizontal({menuComp, detailComp});
 
+    // Drain the transaction queue when a Custom event arrives (posted by the proxy thread).
+    // This MUST happen in the event phase (before render) so that entryLabels is not
+    // modified while FTXUI's Menu component is iterating over it during Render().
+    // Modifying the vector during Render() can trigger vector reallocation, corrupting
+    // Menu's internal animator state and causing std::length_error.
     layout = CatchEvent(layout, [=](Event event) {
+        if (event == Event::Custom) {
+            auto newItems = queue->tryPopAll();
+            for (auto& tx : newItems) {
+                std::string statusStr = tx.response ? std::to_string(tx.response->statusCode) : "???";
+                std::string label = " " + (tx.request ? tx.request->method : "?")
+                                  + "  [" + statusStr + "]  " + tx.host
+                                  + (tx.request ? tx.request->url : "");
+                entryLabels->push_back(std::move(label));
+                entries->push_back(std::move(tx));
+            }
+            return false;  // Don't consume — let child components re-render
+        }
         if (event == Event::Character('h')) return layout->OnEvent(Event::ArrowLeft);
         if (event == Event::Character('l')) return layout->OnEvent(Event::ArrowRight);
         return false;
     });
 
     return Renderer(layout, [=] {
-        // Drain new transactions from the queue on every render
-        auto newItems = queue->tryPopAll();
-        for (auto& tx : newItems) {
-            std::string statusStr = tx.response ? std::to_string(tx.response->statusCode) : "???";
-            std::string label = " " + (tx.request ? tx.request->method : "?") 
-                              + "  [" + statusStr + "]  " + tx.host 
-                              + (tx.request ? tx.request->url : "");
-            entryLabels->push_back(std::move(label));
-            entries->push_back(std::move(tx));
-        }
-
         return vbox(Elements{
             hbox(Elements{
                 Widgets::Panel("Captured Requests", menuComp->Render() | vscroll_indicator | frame) | size(WIDTH, LESS_THAN, 45),

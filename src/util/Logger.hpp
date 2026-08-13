@@ -24,7 +24,7 @@ public:
 private:
     Logger() = default;
     std::mutex  mtx_;
-    LogLevel    level_ = LogLevel::INFO;
+    LogLevel    level_ = LogLevel::DEBUG;
 };
 
 } // namespace BurpTUI

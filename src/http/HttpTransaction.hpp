@@ -8,10 +8,10 @@ namespace BurpTUI {
 
 /// Represents a complete intercepted HTTP transaction
 struct HttpTransaction {
-    int id; // Transaction ID
+    int id = 0;          // Transaction ID
     std::string host;
-    int port;
-    bool is_https;
+    int port = 0;
+    bool is_https = false;
     
     std::shared_ptr<HttpRequest> request;
     std::shared_ptr<HttpResponse> response;

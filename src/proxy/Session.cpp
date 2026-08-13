@@ -22,6 +22,7 @@ Session::~Session() {
 }
 
 void Session::start() {
+    Logger::instance().debug("Session started for client: " + clientSocket_.remote_endpoint().address().to_string());
     resetTimer();
     readClient();
 }
@@ -75,7 +76,13 @@ void Session::handleClientRead(boost::system::error_code ec, std::size_t bytes_t
     resetTimer();
     std::string_view data(clientBuffer_.data(), bytes_transferred);
     clientData_.append(data);
-    
+        if (isConnect_) {
+        // Blind tunnel — forward everything from client directly to server
+        writeServerBlind(std::string(data));
+        readClient();
+        return;
+    }
+
     if (parser_.feedRequest(data)) {
         if (auto req = parser_.takeRequest()) {
             currentTransaction_.id = nextId_++;
@@ -105,10 +112,10 @@ void Session::handleClientRead(boost::system::error_code ec, std::size_t bytes_t
                 if (onTransaction_) {
                     onTransaction_(currentTransaction_);
                 }
-
-                std::string response = "HTTP/1.1 200 Connection Established\r\n\r\n";
-                writeClient(response);
-                Logger::instance().info("CONNECT tunnel: " + host + ":" + port);
+                upstreamHost_ = host;
+                upstreamPort_ = port;
+                Logger::instance().info("CONNECT tunnel requested for: " + host + ":" + port);
+                connectUpstream();
                 return;
             }
 
@@ -146,8 +153,11 @@ void Session::handleClientRead(boost::system::error_code ec, std::size_t bytes_t
             currentTransaction_.port = std::stoi(port.empty() ? "80" : port);
             currentTransaction_.is_https = false;
             
-            Logger::instance().debug("Proxying: " + req->method + " " + host + ":" + port + req->url);
-            connectUpstream(host, port);
+            upstreamHost_ = host;
+            upstreamPort_ = port.empty() ? "80" : port;
+            
+            Logger::instance().debug("Proxying: " + req->method + " " + host + ":" + upstreamPort_ + req->url);
+            connectUpstream();
         } else {
             // Parser returned true but no complete request yet — keep reading
             readClient();
@@ -164,12 +174,14 @@ void Session::handleClientRead(boost::system::error_code ec, std::size_t bytes_t
     }
 }
 
-void Session::connectUpstream(const std::string& host, const std::string& port) {
+void Session::connectUpstream() {
     auto self = shared_from_this();
-    resolver_.async_resolve(host, port,
-        [this, self, host](boost::system::error_code ec, boost::asio::ip::tcp::resolver::results_type results) {
+    Logger::instance().debug("Resolving DNS for " + upstreamHost_ + ":" + upstreamPort_);
+    resolver_.async_resolve(upstreamHost_, upstreamPort_,
+        [this, self](boost::system::error_code ec, boost::asio::ip::tcp::resolver::results_type results) {
+            Logger::instance().debug("DNS resolution completed for " + upstreamHost_ + " (ec: " + std::to_string(ec.value()) + ")");
             if (ec) {
-                Logger::instance().error("DNS resolution failed for " + host + ": " + ec.message());
+                Logger::instance().error("DNS resolution failed for " + upstreamHost_ + ": " + ec.message());
                 sendErrorResponse(502, "Bad Gateway");
                 return;
             }
@@ -179,14 +191,27 @@ void Session::connectUpstream(const std::string& host, const std::string& port) 
 
 void Session::handleUpstreamConnect(boost::system::error_code /*ec*/, boost::asio::ip::tcp::resolver::results_type results) {
     auto self = shared_from_this();
+    Logger::instance().debug("Connecting upstream...");
     boost::asio::async_connect(serverSocket_, results,
         [this, self](boost::system::error_code ec, const boost::asio::ip::tcp::endpoint& /*endpoint*/) {
+            Logger::instance().debug("Upstream connect completed (ec: " + std::to_string(ec.value()) + ")");
             if (ec) {
                 Logger::instance().error("Upstream connect failed: " + ec.message());
-                sendErrorResponse(502, "Bad Gateway");
+                if (isConnect_) {
+                    sendErrorResponse(502, "Bad Gateway");
+                } else {
+                    sendErrorResponse(502, "Bad Gateway");
+                }
                 return;
             }
-            writeUpstream();
+            if (isConnect_) {
+                writeClient("HTTP/1.1 200 Connection Established\r\n\r\n");
+                // Start pumping data both ways
+                readClient();
+                readUpstream();
+            } else {
+                writeUpstream();
+            }
         });
 }
 
@@ -195,8 +220,10 @@ void Session::writeUpstream() {
     std::string serialized = currentTransaction_.request->serialize();
     // Store serialized data to keep it alive during async_write
     serverData_ = std::move(serialized);
+    Logger::instance().debug("Writing upstream (" + std::to_string(serverData_.size()) + " bytes)");
     boost::asio::async_write(serverSocket_, boost::asio::buffer(serverData_),
         [this, self](boost::system::error_code ec, std::size_t bytes_transferred) {
+            Logger::instance().debug("Upstream write completed (ec: " + std::to_string(ec.value()) + ", bytes: " + std::to_string(bytes_transferred) + ")");
             handleUpstreamWrite(ec, bytes_transferred);
         });
 }
@@ -213,8 +240,10 @@ void Session::handleUpstreamWrite(boost::system::error_code ec, std::size_t /*by
 
 void Session::readUpstream() {
     auto self = shared_from_this();
+    Logger::instance().debug("Reading upstream...");
     serverSocket_.async_read_some(boost::asio::buffer(serverBuffer_),
         [this, self](boost::system::error_code ec, std::size_t bytes_transferred) {
+            Logger::instance().debug("Upstream read completed (ec: " + std::to_string(ec.value()) + ", bytes: " + std::to_string(bytes_transferred) + ")");
             handleUpstreamRead(ec, bytes_transferred);
         });
 }
@@ -239,15 +268,16 @@ void Session::handleUpstreamRead(boost::system::error_code ec, std::size_t bytes
         close();
         return;
     }
-    
     resetTimer();
     std::string_view data(serverBuffer_.data(), bytes_transferred);
-    
-    // Accumulate raw response data for forwarding to client
     std::string rawChunk(data);
-    
-    // Write raw data to client immediately (streaming)
     writeClient(rawChunk);
+
+    if (isConnect_) {
+        // Blind tunnel — do not parse
+        readUpstream();
+        return;
+    }
     
     if (parser_.feedResponse(data)) {
         if (auto res = parser_.takeResponse()) {
@@ -289,7 +319,11 @@ void Session::handleUpstreamRead(boost::system::error_code ec, std::size_t bytes
                 
                 readClient();
             } else {
-                close();
+                // Not keep-alive — close after all queued response data is sent
+                closeAfterWrite_ = true;
+                if (writeQueue_.empty()) {
+                    close();
+                }
             }
         } else {
             // Response not complete yet — keep reading
@@ -332,7 +366,38 @@ void Session::handleClientWrite(boost::system::error_code ec, std::size_t /*byte
         doClientWrite();
         return;
     }
-    if (isConnect_ || closeAfterWrite_) {
+    if (closeAfterWrite_) {
+        close();
+    }
+}
+
+void Session::writeServerBlind(std::string data) {
+    auto self = shared_from_this();
+    Logger::instance().debug("Blind forwarding " + std::to_string(data.size()) + " bytes to server");
+    bool idle = writeServerQueue_.empty();
+    writeServerQueue_.push_back(std::move(data));
+    if (idle) {
+        doServerWrite();
+    }
+}
+
+void Session::doServerWrite() {
+    auto self = shared_from_this();
+    boost::asio::async_write(serverSocket_, boost::asio::buffer(writeServerQueue_.front()),
+        [this, self](boost::system::error_code ec, std::size_t bytes_transferred) {
+            handleServerWrite(ec, bytes_transferred);
+        });
+}
+
+void Session::handleServerWrite(boost::system::error_code ec, std::size_t bytes_transferred) {
+    if (!ec) {
+        Logger::instance().debug("Blind server write completed (" + std::to_string(bytes_transferred) + " bytes)");
+        writeServerQueue_.pop_front();
+        if (!writeServerQueue_.empty()) {
+            doServerWrite();
+        }
+    } else if (ec != boost::asio::error::operation_aborted) {
+        Logger::instance().error("Server blind write error: " + ec.message());
         close();
     }
 }
