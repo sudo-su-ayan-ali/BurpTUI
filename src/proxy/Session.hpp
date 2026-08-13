@@ -4,6 +4,7 @@
 #include <atomic>
 #include <array>
 #include <string>
+#include <deque>
 #include <boost/asio.hpp>
 #include "http/HttpTransaction.hpp"
 #include "http/HttpParser.hpp"
@@ -33,7 +34,8 @@ private:
     void handleUpstreamWrite(boost::system::error_code ec, std::size_t bytes_transferred);
     void readUpstream();
     void handleUpstreamRead(boost::system::error_code ec, std::size_t bytes_transferred);
-    void writeClient(const std::string& data);
+    void writeClient(std::string data);
+    void doClientWrite();
     void handleClientWrite(boost::system::error_code ec, std::size_t bytes_transferred);
     void sendErrorResponse(int statusCode, const std::string& statusText);
     void resetTimer();
@@ -53,10 +55,11 @@ private:
 
     std::string clientData_;
     std::string serverData_;
-    std::string pendingClientWrite_;
+    std::deque<std::string> writeQueue_;  ///< Serialised write queue — prevents async_write buffer aliasing
     
     HttpTransaction currentTransaction_;
     bool isConnect_ = false;
+    bool closeAfterWrite_ = false;  ///< Set by sendErrorResponse to close once write queue drains
 };
 
 } // namespace BurpTUI

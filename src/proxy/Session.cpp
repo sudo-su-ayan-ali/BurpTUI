@@ -302,10 +302,18 @@ void Session::handleUpstreamRead(boost::system::error_code ec, std::size_t bytes
     }
 }
 
-void Session::writeClient(const std::string& data) {
+void Session::writeClient(std::string data) {
     auto self = shared_from_this();
-    pendingClientWrite_ = data;
-    boost::asio::async_write(clientSocket_, boost::asio::buffer(pendingClientWrite_),
+    bool idle = writeQueue_.empty();
+    writeQueue_.push_back(std::move(data));
+    if (idle) {
+        doClientWrite();
+    }
+}
+
+void Session::doClientWrite() {
+    auto self = shared_from_this();
+    boost::asio::async_write(clientSocket_, boost::asio::buffer(writeQueue_.front()),
         [this, self](boost::system::error_code ec, std::size_t bytes_transferred) {
             handleClientWrite(ec, bytes_transferred);
         });
@@ -319,8 +327,13 @@ void Session::handleClientWrite(boost::system::error_code ec, std::size_t /*byte
         close();
         return;
     }
-    if (isConnect_) {
-        close(); // Phase 2: close after CONNECT 200 response (full MITM is Phase 3)
+    writeQueue_.pop_front();
+    if (!writeQueue_.empty()) {
+        doClientWrite();
+        return;
+    }
+    if (isConnect_ || closeAfterWrite_) {
+        close();
     }
 }
 
@@ -344,11 +357,8 @@ void Session::sendErrorResponse(int statusCode, const std::string& statusText) {
     }
     
     auto self = shared_from_this();
-    pendingClientWrite_ = response;
-    boost::asio::async_write(clientSocket_, boost::asio::buffer(pendingClientWrite_),
-        [this, self](boost::system::error_code /*ec*/, std::size_t /*bytes*/) {
-            close();
-        });
+    closeAfterWrite_ = true;
+    writeClient(response);
 }
 
 } // namespace BurpTUI
