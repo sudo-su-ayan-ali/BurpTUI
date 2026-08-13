@@ -37,11 +37,41 @@ ftxui::Component MakeHistoryTab(
     std::shared_ptr<TsQueue<HttpTransaction>> txQueue,
     ftxui::ScreenInteractive* screen)
 {
-    (void)screen; // Reserved for future PostEvent notifications
+    (void)screen;
     auto entries = std::make_shared<std::vector<HttpTransaction>>();
     auto entryLabels = std::make_shared<std::vector<std::string>>();
     auto selectedIndex = std::make_shared<int>(0);
     auto queue = txQueue;
+
+    // Populate with dummy HTTP traffic for Phase 1 Step 3
+    for (int i = 1; i <= 5; ++i) {
+        HttpTransaction tx;
+        tx.id = i;
+        tx.host = "example.com";
+        tx.port = 80;
+        tx.is_https = false;
+        
+        tx.request = std::make_shared<HttpRequest>();
+        tx.request->method = (i % 2 == 0) ? "POST" : "GET";
+        tx.request->url = "/api/v1/resource/" + std::to_string(i);
+        tx.request->version = "HTTP/1.1";
+        tx.request->headers = {{"Host", "example.com"}, {"User-Agent", "BurpTUI-Agent/1.0"}};
+        tx.request->body = (i % 2 == 0) ? "{\"action\":\"update\",\"value\":" + std::to_string(i) + "}" : "";
+        
+        tx.response = std::make_shared<HttpResponse>();
+        tx.response->version = "HTTP/1.1";
+        tx.response->statusCode = (i == 4) ? 404 : 200;
+        tx.response->statusText = (i == 4) ? "Not Found" : "OK";
+        tx.response->headers = {{"Content-Type", "application/json"}};
+        tx.response->body = (i == 4) ? "{\"error\":\"not found\"}" : "{\"status\":\"success\"}";
+        
+        std::string statusStr = std::to_string(tx.response->statusCode);
+        std::string label = " " + tx.request->method + "  [" + statusStr + "]  " + tx.host + tx.request->url;
+        
+        entryLabels->push_back(std::move(label));
+        entries->push_back(std::move(tx));
+    }
+
 
     auto menuComp = Menu(entryLabels.get(), selectedIndex.get());
 
