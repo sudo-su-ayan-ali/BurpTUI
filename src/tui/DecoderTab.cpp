@@ -15,17 +15,16 @@ ftxui::Component MakeDecoderTab() {
         std::string inputText;
         std::string outputText;
         int selectedMode = 0;
+        std::vector<std::string> modes = {
+            "Base64 Encode", "Base64 Decode",
+            "URL Encode",    "URL Decode",
+            "Hex Encode",    "Hex Decode",
+        };
     };
     auto state = std::make_shared<State>();
 
-    std::vector<std::string> modes = {
-        "Base64 Encode", "Base64 Decode",
-        "URL Encode",    "URL Decode",
-        "Hex Encode",    "Hex Decode",
-    };
-
     auto inputComp = Input(&state->inputText, "Type text to transform…");
-    auto modeMenu  = Radiobox(&modes, &state->selectedMode);
+    auto modeMenu  = Radiobox(&state->modes, &state->selectedMode);
 
     auto container = Container::Horizontal({
         modeMenu,

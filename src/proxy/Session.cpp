@@ -75,13 +75,15 @@ void Session::handleClientRead(boost::system::error_code ec, std::size_t bytes_t
 
     resetTimer();
     std::string_view data(clientBuffer_.data(), bytes_transferred);
-    clientData_.append(data);
-        if (isConnect_) {
+    
+    if (isConnect_) {
         // Blind tunnel — forward everything from client directly to server
         writeServerBlind(std::string(data));
         readClient();
         return;
     }
+
+    clientData_.append(data);
 
     if (parser_.feedRequest(data)) {
         if (auto req = parser_.takeRequest()) {
