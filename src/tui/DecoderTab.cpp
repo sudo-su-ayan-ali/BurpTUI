@@ -15,6 +15,10 @@ ftxui::Component MakeDecoderTab() {
         std::string inputText;
         std::string outputText;
         int selectedMode = 0;
+        
+        std::string lastInputText;
+        int lastSelectedMode = -1;
+
         std::vector<std::string> modes = {
             "Base64 Encode", "Base64 Decode",
             "URL Encode",    "URL Decode",
@@ -32,23 +36,27 @@ ftxui::Component MakeDecoderTab() {
     });
 
     return Renderer(container, [=] {
-        // Run transformation logic on every render
-        try {
-            if (state->selectedMode == 0) {
-                state->outputText = Encoding::base64Encode(state->inputText);
-            } else if (state->selectedMode == 1) {
-                state->outputText = Encoding::base64Decode(state->inputText);
-            } else if (state->selectedMode == 2) {
-                state->outputText = Encoding::urlEncode(state->inputText);
-            } else if (state->selectedMode == 3) {
-                state->outputText = Encoding::urlDecode(state->inputText);
-            } else if (state->selectedMode == 4) {
-                state->outputText = Encoding::hexEncode(state->inputText);
-            } else if (state->selectedMode == 5) {
-                state->outputText = Encoding::hexDecode(state->inputText);
+        // Run transformation logic only if input or mode changed
+        if (state->inputText != state->lastInputText || state->selectedMode != state->lastSelectedMode) {
+            state->lastInputText = state->inputText;
+            state->lastSelectedMode = state->selectedMode;
+            try {
+                if (state->selectedMode == 0) {
+                    state->outputText = Encoding::base64Encode(state->inputText);
+                } else if (state->selectedMode == 1) {
+                    state->outputText = Encoding::base64Decode(state->inputText);
+                } else if (state->selectedMode == 2) {
+                    state->outputText = Encoding::urlEncode(state->inputText);
+                } else if (state->selectedMode == 3) {
+                    state->outputText = Encoding::urlDecode(state->inputText);
+                } else if (state->selectedMode == 4) {
+                    state->outputText = Encoding::hexEncode(state->inputText);
+                } else if (state->selectedMode == 5) {
+                    state->outputText = Encoding::hexDecode(state->inputText);
+                }
+            } catch (const std::exception& e) {
+                state->outputText = std::string("Error: ") + e.what();
             }
-        } catch (const std::exception& e) {
-            state->outputText = std::string("Error: ") + e.what();
         }
 
         return vbox(Elements{
