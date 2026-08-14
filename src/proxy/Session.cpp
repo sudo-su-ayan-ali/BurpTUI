@@ -50,8 +50,18 @@ void Session::resetTimer() {
 
 void Session::handleTimeout(boost::system::error_code ec) {
     if (ec != boost::asio::error::operation_aborted) {
-        Logger::instance().debug("Session timeout — closing idle connection");
-        close();
+        if (currentTransaction_.request && !currentTransaction_.response && !isConnect_) {
+            Logger::instance().debug("Session timeout — waiting for upstream, sending 504 Gateway Timeout");
+            boost::system::error_code ignored;
+            resolver_.cancel();
+            if (serverSocket_.is_open()) {
+                serverSocket_.cancel(ignored);
+            }
+            sendErrorResponse(504, "Gateway Timeout");
+        } else {
+            Logger::instance().debug("Session timeout — closing idle connection");
+            close();
+        }
     }
 }
 
@@ -155,11 +165,25 @@ void Session::handleClientRead(boost::system::error_code ec, std::size_t bytes_t
             currentTransaction_.port = std::stoi(port.empty() ? "80" : port);
             currentTransaction_.is_https = false;
             
+            std::string prevHost = upstreamHost_;
+            std::string prevPort = upstreamPort_;
+            
             upstreamHost_ = host;
             upstreamPort_ = port.empty() ? "80" : port;
             
-            Logger::instance().debug("Proxying: " + req->method + " " + host + ":" + upstreamPort_ + req->url);
-            connectUpstream();
+            if (serverSocket_.is_open() && upstreamHost_ == prevHost && upstreamPort_ == prevPort) {
+                Logger::instance().debug("Reusing upstream connection for: " + upstreamHost_ + ":" + upstreamPort_);
+                writeUpstream();
+            } else {
+                if (serverSocket_.is_open()) {
+                    boost::system::error_code ec2;
+                    serverSocket_.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec2);
+                    serverSocket_.close(ec2);
+                }
+                serverSocket_ = boost::asio::ip::tcp::socket(clientSocket_.get_executor());
+                Logger::instance().debug("Proxying: " + req->method + " " + host + ":" + upstreamPort_ + req->url);
+                connectUpstream();
+            }
         } else {
             // Parser returned true but no complete request yet — keep reading
             readClient();
@@ -310,15 +334,7 @@ void Session::handleUpstreamRead(boost::system::error_code ec, std::size_t bytes
                 currentTransaction_ = HttpTransaction{};
                 isConnect_ = false;
                 
-                // Close old upstream socket — new request may target different host
-                boost::system::error_code ec2;
-                if (serverSocket_.is_open()) {
-                    serverSocket_.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec2);
-                    serverSocket_.close(ec2);
-                }
-                // Re-create server socket for next connection
-                serverSocket_ = boost::asio::ip::tcp::socket(clientSocket_.get_executor());
-                
+                // Keep serverSocket_ open for connection reuse.
                 readClient();
             } else {
                 // Not keep-alive — close after all queued response data is sent
