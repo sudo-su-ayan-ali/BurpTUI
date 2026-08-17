@@ -1,0 +1,79 @@
+[New LWP 9929]
+[New LWP 9928]
+[New LWP 9927]
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library "/lib/x86_64-linux-gnu/libthread_db.so.1".
+0x00007fdccd3b672e in ?? () from /lib/x86_64-linux-gnu/libc.so.6
+
+Thread 4 (Thread 0x7fdccd31b6c0 (LWP 9927) "burptui"):
+#0  0x00007fdccd3b672e in ?? () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x00007fdccd3ab388 in ?? () from /lib/x86_64-linux-gnu/libc.so.6
+#2  0x00007fdccd3ab3cd in ?? () from /lib/x86_64-linux-gnu/libc.so.6
+#3  0x00007fdccd42c7ed in epoll_wait () from /lib/x86_64-linux-gnu/libc.so.6
+#4  0x000055f5ff8b4739 in boost::asio::detail::epoll_reactor::run (this=0x55f611bd2b00, usec=-1, ops=...) at /home/user/Documents/git_repos/BurpTUI/build/vcpkg_installed/x64-linux/include/boost/asio/detail/impl/epoll_reactor.ipp:510
+#5  0x000055f5ff8b5fcc in boost::asio::detail::scheduler::do_run_one (this=0x55f611bd29f0, lock=..., this_thread=..., ec=...) at /home/user/Documents/git_repos/BurpTUI/build/vcpkg_installed/x64-linux/include/boost/asio/detail/impl/scheduler.ipp:477
+#6  0x000055f5ff8b5ace in boost::asio::detail::scheduler::run (this=0x55f611bd29f0, ec=...) at /home/user/Documents/git_repos/BurpTUI/build/vcpkg_installed/x64-linux/include/boost/asio/detail/impl/scheduler.ipp:210
+#7  0x000055f5ff8b641a in boost::asio::io_context::run (this=0x55f611bd2958) at /home/user/Documents/git_repos/BurpTUI/build/vcpkg_installed/x64-linux/include/boost/asio/impl/io_context.ipp:64
+#8  0x000055f5ff8af026 in operator() (__closure=0x55f611bcc968) at /home/user/Documents/git_repos/BurpTUI/src/proxy/ProxyServer.cpp:70
+#9  0x000055f5ff8afd7e in std::__invoke_impl<void, BurpTUI::ProxyServer::start()::<lambda()> >(std::__invoke_other, struct {...} &&) (__f=...) at /usr/include/c++/14/bits/invoke.h:61
+#10 0x000055f5ff8afd41 in std::__invoke<BurpTUI::ProxyServer::start()::<lambda()> >(struct {...} &&) (__fn=...) at /usr/include/c++/14/bits/invoke.h:96
+#11 0x000055f5ff8afcee in std::thread::_Invoker<std::tuple<BurpTUI::ProxyServer::start()::<lambda()> > >::_M_invoke<0>(std::_Index_tuple<0>) (this=0x55f611bcc968) at /usr/include/c++/14/bits/std_thread.h:301
+#12 0x000055f5ff8afcc2 in std::thread::_Invoker<std::tuple<BurpTUI::ProxyServer::start()::<lambda()> > >::operator()(void) (this=0x55f611bcc968) at /usr/include/c++/14/bits/std_thread.h:308
+#13 0x000055f5ff8afca6 in std::thread::_State_impl<std::thread::_Invoker<std::tuple<BurpTUI::ProxyServer::start()::<lambda()> > > >::_M_run(void) (this=0x55f611bcc960) at /usr/include/c++/14/bits/std_thread.h:253
+#14 0x00007fdccd6e1224 in ?? () from /lib/x86_64-linux-gnu/libstdc++.so.6
+#15 0x00007fdccd3ae8bb in ?? () from /lib/x86_64-linux-gnu/libc.so.6
+#16 0x00007fdccd42c538 in ?? () from /lib/x86_64-linux-gnu/libc.so.6
+
+Thread 3 (Thread 0x7fdcccb1a6c0 (LWP 9928) "burptui"):
+#0  0x00007fdccd3b672e in ?? () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x00007fdccd3ab388 in ?? () from /lib/x86_64-linux-gnu/libc.so.6
+#2  0x00007fdccd3ab3cd in ?? () from /lib/x86_64-linux-gnu/libc.so.6
+#3  0x00007fdccd429f59 in select () from /lib/x86_64-linux-gnu/libc.so.6
+#4  0x000055f5ff954d54 in ftxui::(anonymous namespace)::CheckStdinReady (usec_timeout=20000) at /home/user/Documents/git_repos/BurpTUI/.vcpkg/buildtrees/ftxui/src/v5.0.0-a8044098d1.clean/src/ftxui/component/screen_interactive.cpp:166
+#5  0x000055f5ff954dc9 in ftxui::(anonymous namespace)::EventListener (quit=0x7fff37178d60, out=std::unique_ptr<ftxui::SenderImpl<std::variant<ftxui::Event, std::function<void()>, ftxui::AnimationTask> >> = {...}) at /home/user/Documents/git_repos/BurpTUI/.vcpkg/buildtrees/ftxui/src/v5.0.0-a8044098d1.clean/src/ftxui/component/screen_interactive.cpp:175
+#6  0x000055f5ff965913 in std::__invoke_impl<void, void (*)(std::atomic<bool>*, std::unique_ptr<ftxui::SenderImpl<std::variant<ftxui::Event, std::function<void()>, ftxui::AnimationTask> >, std::default_delete<ftxui::SenderImpl<std::variant<ftxui::Event, std::function<void()>, ftxui::AnimationTask> > > >), std::atomic<bool>*, std::unique_ptr<ftxui::SenderImpl<std::variant<ftxui::Event, std::function<void()>, ftxui::AnimationTask> >, std::default_delete<ftxui::SenderImpl<std::variant<ftxui::Event, std::function<void()>, ftxui::AnimationTask> > > > > (__f=@0x55f611bcace8: 0x55f5ff954d60 <ftxui::(anonymous namespace)::EventListener(std::atomic<bool>*, ftxui::Sender)>) at /usr/include/c++/14/bits/invoke.h:61
+#7  0x000055f5ff96585e in std::__invoke<void (*)(std::atomic<bool>*, std::unique_ptr<ftxui::SenderImpl<std::variant<ftxui::Event, std::function<void()>, ftxui::AnimationTask> >, std::default_delete<ftxui::SenderImpl<std::variant<ftxui::Event, std::function<void()>, ftxui::AnimationTask> > > >), std::atomic<bool>*, std::unique_ptr<ftxui::SenderImpl<std::variant<ftxui::Event, std::function<void()>, ftxui::AnimationTask> >, std::default_delete<ftxui::SenderImpl<std::variant<ftxui::Event, std::function<void()>, ftxui::AnimationTask> > > > > (__fn=@0x55f611bcace8: 0x55f5ff954d60 <ftxui::(anonymous namespace)::EventListener(std::atomic<bool>*, ftxui::Sender)>) at /usr/include/c++/14/bits/invoke.h:96
+#8  0x000055f5ff965791 in std::thread::_Invoker<std::tuple<void (*)(std::atomic<bool>*, std::unique_ptr<ftxui::SenderImpl<std::variant<ftxui::Event, std::function<void()>, ftxui::AnimationTask> >, std::default_delete<ftxui::SenderImpl<std::variant<ftxui::Event, std::function<void()>, ftxui::AnimationTask> > > >), std::atomic<bool>*, std::unique_ptr<ftxui::SenderImpl<std::variant<ftxui::Event, std::function<void()>, ftxui::AnimationTask> >, std::default_delete<ftxui::SenderImpl<std::variant<ftxui::Event, std::function<void()>, ftxui::AnimationTask> > > > > >::_M_invoke<0ul, 1ul, 2ul> (this=0x55f611bcacd8) at /usr/include/c++/14/bits/std_thread.h:301
+#9  0x000055f5ff96572e in std::thread::_Invoker<std::tuple<void (*)(std::atomic<bool>*, std::unique_ptr<ftxui::SenderImpl<std::variant<ftxui::Event, std::function<void()>, ftxui::AnimationTask> >, std::default_delete<ftxui::SenderImpl<std::variant<ftxui::Event, std::function<void()>, ftxui::AnimationTask> > > >), std::atomic<bool>*, std::unique_ptr<ftxui::SenderImpl<std::variant<ftxui::Event, std::function<void()>, ftxui::AnimationTask> >, std::default_delete<ftxui::SenderImpl<std::variant<ftxui::Event, std::function<void()>, ftxui::AnimationTask> > > > > >::operator() (this=0x55f611bcacd8) at /usr/include/c++/14/bits/std_thread.h:308
+#10 0x000055f5ff965712 in std::thread::_State_impl<std::thread::_Invoker<std::tuple<void (*)(std::atomic<bool>*, std::unique_ptr<ftxui::SenderImpl<std::variant<ftxui::Event, std::function<void()>, ftxui::AnimationTask> >, std::default_delete<ftxui::SenderImpl<std::variant<ftxui::Event, std::function<void()>, ftxui::AnimationTask> > > >), std::atomic<bool>*, std::unique_ptr<ftxui::SenderImpl<std::variant<ftxui::Event, std::function<void()>, ftxui::AnimationTask> >, std::default_delete<ftxui::SenderImpl<std::variant<ftxui::Event, std::function<void()>, ftxui::AnimationTask> > > > > > >::_M_run (this=0x55f611bcacd0) at /usr/include/c++/14/bits/std_thread.h:253
+#11 0x00007fdccd6e1224 in ?? () from /lib/x86_64-linux-gnu/libstdc++.so.6
+#12 0x00007fdccd3ae8bb in ?? () from /lib/x86_64-linux-gnu/libc.so.6
+#13 0x00007fdccd42c538 in ?? () from /lib/x86_64-linux-gnu/libc.so.6
+
+Thread 2 (Thread 0x7fdcc7fff6c0 (LWP 9929) "burptui"):
+#0  0x00007fdccd3b672e in ?? () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x00007fdccd3ab388 in ?? () from /lib/x86_64-linux-gnu/libc.so.6
+#2  0x00007fdccd3f7cfa in clock_nanosleep () from /lib/x86_64-linux-gnu/libc.so.6
+#3  0x00007fdccd403113 in nanosleep () from /lib/x86_64-linux-gnu/libc.so.6
+#4  0x000055f5ff95d99e in std::this_thread::sleep_for<long, std::ratio<1l, 1000l> > (__rtime=std::chrono::duration = { 15ms }) at /usr/include/c++/14/bits/this_thread_sleep.h:80
+#5  0x000055f5ff9555ed in ftxui::(anonymous namespace)::AnimationListener (quit=0x7fff37178d60, out=std::unique_ptr<ftxui::SenderImpl<std::variant<ftxui::Event, std::function<void()>, ftxui::AnimationTask> >> = {...}) at /home/user/Documents/git_repos/BurpTUI/.vcpkg/buildtrees/ftxui/src/v5.0.0-a8044098d1.clean/src/ftxui/component/screen_interactive.cpp:329
+#6  0x000055f5ff965913 in std::__invoke_impl<void, void (*)(std::atomic<bool>*, std::unique_ptr<ftxui::SenderImpl<std::variant<ftxui::Event, std::function<void()>, ftxui::AnimationTask> >, std::default_delete<ftxui::SenderImpl<std::variant<ftxui::Event, std::function<void()>, ftxui::AnimationTask> > > >), std::atomic<bool>*, std::unique_ptr<ftxui::SenderImpl<std::variant<ftxui::Event, std::function<void()>, ftxui::AnimationTask> >, std::default_delete<ftxui::SenderImpl<std::variant<ftxui::Event, std::function<void()>, ftxui::AnimationTask> > > > > (__f=@0x55f611bcb8e8: 0x55f5ff955589 <ftxui::(anonymous namespace)::AnimationListener(std::atomic<bool>*, ftxui::Sender)>) at /usr/include/c++/14/bits/invoke.h:61
+#7  0x000055f5ff96585e in std::__invoke<void (*)(std::atomic<bool>*, std::unique_ptr<ftxui::SenderImpl<std::variant<ftxui::Event, std::function<void()>, ftxui::AnimationTask> >, std::default_delete<ftxui::SenderImpl<std::variant<ftxui::Event, std::function<void()>, ftxui::AnimationTask> > > >), std::atomic<bool>*, std::unique_ptr<ftxui::SenderImpl<std::variant<ftxui::Event, std::function<void()>, ftxui::AnimationTask> >, std::default_delete<ftxui::SenderImpl<std::variant<ftxui::Event, std::function<void()>, ftxui::AnimationTask> > > > > (__fn=@0x55f611bcb8e8: 0x55f5ff955589 <ftxui::(anonymous namespace)::AnimationListener(std::atomic<bool>*, ftxui::Sender)>) at /usr/include/c++/14/bits/invoke.h:96
+#8  0x000055f5ff965791 in std::thread::_Invoker<std::tuple<void (*)(std::atomic<bool>*, std::unique_ptr<ftxui::SenderImpl<std::variant<ftxui::Event, std::function<void()>, ftxui::AnimationTask> >, std::default_delete<ftxui::SenderImpl<std::variant<ftxui::Event, std::function<void()>, ftxui::AnimationTask> > > >), std::atomic<bool>*, std::unique_ptr<ftxui::SenderImpl<std::variant<ftxui::Event, std::function<void()>, ftxui::AnimationTask> >, std::default_delete<ftxui::SenderImpl<std::variant<ftxui::Event, std::function<void()>, ftxui::AnimationTask> > > > > >::_M_invoke<0ul, 1ul, 2ul> (this=0x55f611bcb8d8) at /usr/include/c++/14/bits/std_thread.h:301
+#9  0x000055f5ff96572e in std::thread::_Invoker<std::tuple<void (*)(std::atomic<bool>*, std::unique_ptr<ftxui::SenderImpl<std::variant<ftxui::Event, std::function<void()>, ftxui::AnimationTask> >, std::default_delete<ftxui::SenderImpl<std::variant<ftxui::Event, std::function<void()>, ftxui::AnimationTask> > > >), std::atomic<bool>*, std::unique_ptr<ftxui::SenderImpl<std::variant<ftxui::Event, std::function<void()>, ftxui::AnimationTask> >, std::default_delete<ftxui::SenderImpl<std::variant<ftxui::Event, std::function<void()>, ftxui::AnimationTask> > > > > >::operator() (this=0x55f611bcb8d8) at /usr/include/c++/14/bits/std_thread.h:308
+#10 0x000055f5ff965712 in std::thread::_State_impl<std::thread::_Invoker<std::tuple<void (*)(std::atomic<bool>*, std::unique_ptr<ftxui::SenderImpl<std::variant<ftxui::Event, std::function<void()>, ftxui::AnimationTask> >, std::default_delete<ftxui::SenderImpl<std::variant<ftxui::Event, std::function<void()>, ftxui::AnimationTask> > > >), std::atomic<bool>*, std::unique_ptr<ftxui::SenderImpl<std::variant<ftxui::Event, std::function<void()>, ftxui::AnimationTask> >, std::default_delete<ftxui::SenderImpl<std::variant<ftxui::Event, std::function<void()>, ftxui::AnimationTask> > > > > > >::_M_run (this=0x55f611bcb8d0) at /usr/include/c++/14/bits/std_thread.h:253
+#11 0x00007fdccd6e1224 in ?? () from /lib/x86_64-linux-gnu/libstdc++.so.6
+#12 0x00007fdccd3ae8bb in ?? () from /lib/x86_64-linux-gnu/libc.so.6
+#13 0x00007fdccd42c538 in ?? () from /lib/x86_64-linux-gnu/libc.so.6
+
+Thread 1 (Thread 0x7fdccd888780 (LWP 9926) "burptui"):
+#0  0x00007fdccd3b672e in ?? () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x00007fdccd3ab388 in ?? () from /lib/x86_64-linux-gnu/libc.so.6
+#2  0x00007fdccd3ab3cd in ?? () from /lib/x86_64-linux-gnu/libc.so.6
+#3  0x00007fdccd4206b6 in write () from /lib/x86_64-linux-gnu/libc.so.6
+#4  0x00007fdccd3a7315 in _IO_file_write () from /lib/x86_64-linux-gnu/libc.so.6
+#5  0x00007fdccd3a55f2 in ?? () from /lib/x86_64-linux-gnu/libc.so.6
+#6  0x00007fdccd3a6419 in _IO_do_write () from /lib/x86_64-linux-gnu/libc.so.6
+#7  0x00007fdccd3a7487 in _IO_file_xsputn () from /lib/x86_64-linux-gnu/libc.so.6
+#8  0x00007fdccd39b09c in fwrite () from /lib/x86_64-linux-gnu/libc.so.6
+#9  0x00007fdccd740b9d in std::basic_ostream<char, std::char_traits<char> >& std::__ostream_insert<char, std::char_traits<char> >(std::basic_ostream<char, std::char_traits<char> >&, char const*, long) () from /lib/x86_64-linux-gnu/libstdc++.so.6
+#10 0x000055f5ff9578fc in ftxui::ScreenInteractive::Draw (this=0x7fff37178ca8, component=std::shared_ptr<ftxui::ComponentBase> (use count 4, weak count 0) = {...}) at /home/user/Documents/git_repos/BurpTUI/.vcpkg/buildtrees/ftxui/src/v5.0.0-a8044098d1.clean/src/ftxui/component/screen_interactive.cpp:816
+#11 0x000055f5ff956f09 in ftxui::ScreenInteractive::RunOnce (this=0x7fff37178ca8, component=std::shared_ptr<ftxui::ComponentBase> (empty) = {...}) at /home/user/Documents/git_repos/BurpTUI/.vcpkg/buildtrees/ftxui/src/v5.0.0-a8044098d1.clean/src/ftxui/component/screen_interactive.cpp:672
+#12 0x000055f5ff956de4 in ftxui::ScreenInteractive::RunOnceBlocking (this=0x7fff37178ca8, component=std::shared_ptr<ftxui::ComponentBase> (use count 4, weak count 0) = {...}) at /home/user/Documents/git_repos/BurpTUI/.vcpkg/buildtrees/ftxui/src/v5.0.0-a8044098d1.clean/src/ftxui/component/screen_interactive.cpp:662
+#13 0x000055f5ff96a7d8 in ftxui::Loop::RunOnceBlocking (this=0x7fff37178bc0) at /home/user/Documents/git_repos/BurpTUI/.vcpkg/buildtrees/ftxui/src/v5.0.0-a8044098d1.clean/src/ftxui/component/loop.cpp:46
+#14 0x000055f5ff96a820 in ftxui::Loop::Run (this=0x7fff37178bc0) at /home/user/Documents/git_repos/BurpTUI/.vcpkg/buildtrees/ftxui/src/v5.0.0-a8044098d1.clean/src/ftxui/component/loop.cpp:53
+#15 0x000055f5ff955b6e in ftxui::ScreenInteractive::Loop (this=0x7fff37178ca8, component=std::shared_ptr<ftxui::ComponentBase> (empty) = {...}) at /home/user/Documents/git_repos/BurpTUI/.vcpkg/buildtrees/ftxui/src/v5.0.0-a8044098d1.clean/src/ftxui/component/screen_interactive.cpp:457
+#16 0x000055f5ff8ecd5c in BurpTUI::TuiApp::run (this=0x7fff37178c90) at /home/user/Documents/git_repos/BurpTUI/src/tui/TuiApp.cpp:79
+#17 0x000055f5ff8a8dd3 in BurpTUI::App::run (this=0x7fff37178ee0) at /home/user/Documents/git_repos/BurpTUI/src/app/App.cpp:32
+#18 0x000055f5ff8a7f17 in main () at /home/user/Documents/git_repos/BurpTUI/src/main.cpp:5
+[Inferior 1 (process 9926) detached]

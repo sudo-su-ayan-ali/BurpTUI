@@ -160,7 +160,15 @@ struct HttpParser::Impl {
 
         static int on_body(llhttp_t* p, const char* at, size_t length) {
             auto* self = static_cast<ResponseParser*>(p->data);
-            self->response.body.append(at, length);
+            const size_t MAX_BODY_SIZE = 1 * 1024 * 1024; // 1 MB limit for UI
+            if (self->response.body.size() < MAX_BODY_SIZE) {
+                size_t space = MAX_BODY_SIZE - self->response.body.size();
+                size_t to_append = std::min<size_t>(length, space);
+                self->response.body.append(at, to_append);
+                if (to_append < length) {
+                    self->response.body.append("\n\n[--- Body truncated for UI ---]");
+                }
+            }
             return 0;
         }
 
@@ -190,6 +198,7 @@ bool HttpParser::feedRequest(std::string_view data) {
     if (impl_->requestParser.messageComplete) return true;
     llhttp_errno err = llhttp_execute(&impl_->requestParser.parser, data.data(), data.size());
     if (err != HPE_OK && err != HPE_PAUSED_UPGRADE) {
+        Logger::instance().error("llhttp_execute failed on request: " + std::string(llhttp_errno_name(err)) + " (" + llhttp_get_error_reason(&impl_->requestParser.parser) + ")");
         return false;
     }
     return impl_->requestParser.messageComplete;

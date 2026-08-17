@@ -44,6 +44,7 @@ set(BURPTUI_SOURCES
     src/proxy/MitmSession.cpp
     src/proxy/CertGenerator.cpp
     src/proxy/CertCache.cpp
+    src/proxy/SslInit.cpp
 
     # HTTP parsing
     src/http/HttpParser.cpp

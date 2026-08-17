@@ -2,6 +2,7 @@
 #include "proxy/ProxyServer.hpp"
 #include "tui/TuiApp.hpp"
 #include "util/Logger.hpp"
+#include "proxy/SslInit.hpp"
 
 namespace BurpTUI {
 
@@ -15,6 +16,12 @@ App::~App() {
 }
 
 int App::run() {
+    if (!SslInit::instance().initialize(cfg_.caDir)) {
+        Logger::instance().error("Fatal: OpenSSL initialization failed");
+        return 1;
+    }
+    Logger::instance().info("CA Certificate available at: " + cfg_.caDir + "/ca.crt");
+
     TuiApp tui(cfg_, txQueue_);
     auto trigger = tui.getUpdateTrigger();
     auto queue = txQueue_;

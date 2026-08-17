@@ -26,9 +26,10 @@ struct ProxyServer::Impl {
 
     void doAccept() {
         if (!running_) return;
-        
+        Logger::instance().debug("doAccept() called");
         acceptor_.async_accept(
             [this](boost::system::error_code ec, boost::asio::ip::tcp::socket socket) {
+                Logger::instance().debug("async_accept callback fired");
                 if (!ec) {
                     auto session = std::make_shared<Session>(std::move(socket), onTransaction_, nextId_);
                     session->start();
@@ -65,7 +66,12 @@ void ProxyServer::start() {
 
         impl_->thread_ = std::thread([this]() {
             Logger::instance().info("ProxyServer started on " + impl_->host_ + ":" + std::to_string(impl_->port_));
-            impl_->io_context_.run();
+            try {
+                impl_->io_context_.run();
+            } catch (const std::exception& e) {
+                Logger::instance().error(std::string("io_context.run exception: ") + e.what());
+            }
+            Logger::instance().info("ProxyServer io_context loop exited");
         });
     } catch (const std::exception& e) {
         Logger::instance().error(std::string("Failed to start ProxyServer: ") + e.what());

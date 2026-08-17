@@ -12,6 +12,7 @@ set(LIB_SOURCES
     ${CMAKE_SOURCE_DIR}/src/proxy/MitmSession.cpp
     ${CMAKE_SOURCE_DIR}/src/proxy/CertGenerator.cpp
     ${CMAKE_SOURCE_DIR}/src/proxy/CertCache.cpp
+    ${CMAKE_SOURCE_DIR}/src/proxy/SslInit.cpp
 
     # HTTP parsing
     ${CMAKE_SOURCE_DIR}/src/http/HttpParser.cpp
