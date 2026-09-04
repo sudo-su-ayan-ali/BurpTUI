@@ -118,6 +118,83 @@ void RepeaterManager::executeRequest() {
         port = port_;
         isHttps = isHttps_;
         req = rawRequest_;
+    }
+
+    // Sanitize host and scheme
+    while (!host.empty() && (host.front() == ' ' || host.front() == '\t')) host.erase(0, 1);
+    while (!host.empty() && (host.back() == ' ' || host.back() == '\t')) host.pop_back();
+
+    if (host.starts_with("https://")) {
+        host = host.substr(8);
+        isHttps = true;
+    } else if (host.starts_with("http://")) {
+        host = host.substr(7);
+        isHttps = false;
+    }
+
+    auto slashPos = host.find('/');
+    if (slashPos != std::string::npos) {
+        host = host.substr(0, slashPos);
+    }
+
+    auto colonPos = host.rfind(':');
+    if (colonPos != std::string::npos && host.find(']') == std::string::npos) {
+        port = host.substr(colonPos + 1);
+        host = host.substr(0, colonPos);
+    }
+
+    if (port.empty()) {
+        port = isHttps ? "443" : "80";
+    }
+
+    // Clean and normalize HTTP request
+    // Remove accidental (HTTPS) or (HTTP) in Host line
+    auto p1 = req.find(" (HTTPS)");
+    if (p1 != std::string::npos) req.erase(p1, 8);
+    auto p2 = req.find(" (HTTP)");
+    if (p2 != std::string::npos) req.erase(p2, 7);
+
+    // Normalize CRLF
+    std::string cleanReq;
+    cleanReq.reserve(req.size() + 64);
+    for (char c : req) {
+        if (c == '\r') continue;
+        if (c == '\n') cleanReq += "\r\n";
+        else cleanReq += c;
+    }
+
+    // Ensure headers terminate with double CRLF
+    if (cleanReq.find("\r\n\r\n") == std::string::npos) {
+        if (cleanReq.ends_with("\r\n")) {
+            cleanReq += "\r\n";
+        } else {
+            cleanReq += "\r\n\r\n";
+        }
+    }
+
+    // Ensure Host header is present
+    if (cleanReq.find("Host:") == std::string::npos && cleanReq.find("host:") == std::string::npos) {
+        auto firstLineEnd = cleanReq.find("\r\n");
+        if (firstLineEnd != std::string::npos) {
+            cleanReq.insert(firstLineEnd + 2, "Host: " + host + "\r\n");
+        }
+    }
+
+    // Ensure Connection: close is set so socket reads terminate promptly
+    if (cleanReq.find("Connection:") == std::string::npos && cleanReq.find("connection:") == std::string::npos) {
+        auto firstLineEnd = cleanReq.find("\r\n");
+        if (firstLineEnd != std::string::npos) {
+            cleanReq.insert(firstLineEnd + 2, "Connection: close\r\n");
+        }
+    }
+
+    req = std::move(cleanReq);
+
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        host_ = host;
+        port_ = port;
+        isHttps_ = isHttps;
         statusText_ = "Connecting to " + host + ":" + port + "...";
     }
     if (notifyCallback_) notifyCallback_();

@@ -210,12 +210,44 @@ Element FormatHttpResponse(const HttpResponse& res) {
     return vbox(FormatHttpResponseLines(res));
 }
 
-std::string FormatHttpRequestRaw(const HttpRequest& req, bool isHttps, const std::string& host) {
+std::string FormatHttpRequestRaw(const HttpRequest& req, bool /*isHttps*/, const std::string& host) {
+    if (!req.rawOverride.empty()) {
+        std::string raw = req.rawOverride;
+        auto p1 = raw.find(" (HTTPS)");
+        if (p1 != std::string::npos) raw.erase(p1, 8);
+        auto p2 = raw.find(" (HTTP)");
+        if (p2 != std::string::npos) raw.erase(p2, 7);
+        return raw;
+    }
     std::ostringstream oss;
     oss << req.method << " " << req.url << " " << req.version << "\r\n";
-    oss << "Host: " << host << (isHttps ? " (HTTPS)" : "") << "\r\n";
+
+    std::string hostVal = host;
+    if (hostVal.empty()) {
+        hostVal = req.header("Host");
+    }
+    // Strip scheme if present
+    if (hostVal.starts_with("https://")) hostVal = hostVal.substr(8);
+    else if (hostVal.starts_with("http://")) hostVal = hostVal.substr(7);
+    // Strip trailing slash
+    if (hostVal.ends_with("/")) hostVal.pop_back();
+    // Strip accidental (HTTP...)
+    auto pos = hostVal.find(" (HTTP");
+    if (pos != std::string::npos) {
+        hostVal = hostVal.substr(0, pos);
+    }
+
+    if (!hostVal.empty()) {
+        oss << "Host: " << hostVal << "\r\n";
+    }
+
     for (const auto& [k, v] : req.headers) {
-        if (k == "Host") continue;
+        if (k.size() == 4 && (k[0] == 'H' || k[0] == 'h') &&
+                             (k[1] == 'o' || k[1] == 'O') &&
+                             (k[2] == 's' || k[2] == 'S') &&
+                             (k[3] == 't' || k[3] == 'T')) {
+            continue;
+        }
         oss << k << ": " << v << "\r\n";
     }
     oss << "\r\n" << req.body;

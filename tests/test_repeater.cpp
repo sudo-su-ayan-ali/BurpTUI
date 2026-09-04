@@ -56,3 +56,29 @@ TEST(RepeaterManagerTest, StateAndTarget) {
     EXPECT_TRUE(mgr.isHttps());
     EXPECT_EQ(mgr.getRawRequest(), "GET /test HTTP/1.1\r\nHost: example.com\r\n\r\n");
 }
+
+TEST(HttpRawParseTest, SanitizeHostHttpsSuffix) {
+    std::string malformed = 
+        "GET / HTTP/1.1\r\n"
+        "Host: duckduckgo.com (HTTPS)\r\n"
+        "User-Agent: BurpTUI\r\n\r\n";
+
+    HttpRequest req = ParseRawHttpRequest(malformed);
+    EXPECT_EQ(req.header("Host"), "duckduckgo.com");
+    EXPECT_EQ(req.serialize().find("(HTTPS)"), std::string::npos);
+    EXPECT_TRUE(req.serialize().ends_with("\r\n\r\n"));
+}
+
+TEST(TextEditorTest, PreserveDoubleCRLF) {
+    auto editor = MakeTextEditor("HTTP Request");
+    std::string httpReq = 
+        "GET / HTTP/1.1\r\n"
+        "Host: duckduckgo.com\r\n"
+        "User-Agent: BurpTUI\r\n"
+        "\r\n";
+
+    editor->SetText(httpReq);
+    std::string retrieved = editor->GetText();
+    EXPECT_EQ(retrieved, httpReq);
+    EXPECT_TRUE(retrieved.ends_with("\r\n\r\n"));
+}

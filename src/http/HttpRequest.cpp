@@ -23,10 +23,36 @@ std::string HttpRequest::serialize() const {
 
 HttpRequest ParseRawHttpRequest(std::string_view raw) {
     HttpRequest req;
-    req.rawOverride = std::string(raw);
 
     std::string str(raw);
-    std::istringstream stream(str);
+    // Sanitize any (HTTPS) or (HTTP) in Host lines
+    auto p1 = str.find(" (HTTPS)");
+    if (p1 != std::string::npos) str.erase(p1, 8);
+    auto p2 = str.find(" (HTTP)");
+    if (p2 != std::string::npos) str.erase(p2, 7);
+
+    // Normalize CRLF
+    std::string normalized;
+    normalized.reserve(str.size() + 16);
+    for (size_t i = 0; i < str.size(); ++i) {
+        if (str[i] == '\r') continue;
+        if (str[i] == '\n') {
+            normalized += "\r\n";
+        } else {
+            normalized += str[i];
+        }
+    }
+    // Ensure header section has \r\n\r\n
+    if (normalized.find("\r\n\r\n") == std::string::npos) {
+        if (normalized.ends_with("\r\n")) {
+            normalized += "\r\n";
+        } else {
+            normalized += "\r\n\r\n";
+        }
+    }
+    req.rawOverride = normalized;
+
+    std::istringstream stream(normalized);
     std::string line;
 
     // First line: METHOD URL VERSION

@@ -22,10 +22,20 @@ void TextEditor::SetText(const std::string& text) {
     for (char c : text) {
         if (c != '\r') clean += c;
     }
-    std::istringstream stream(clean);
-    std::string line;
-    while (std::getline(stream, line)) {
-        lines_.push_back(line);
+    size_t start = 0;
+    while (start < clean.size()) {
+        size_t end = clean.find('\n', start);
+        if (end == std::string::npos) {
+            lines_.push_back(clean.substr(start));
+            break;
+        } else {
+            lines_.push_back(clean.substr(start, end - start));
+            start = end + 1;
+            if (start == clean.size()) {
+                lines_.push_back("");
+                break;
+            }
+        }
     }
     if (lines_.empty()) {
         lines_.push_back("");
