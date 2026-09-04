@@ -19,6 +19,8 @@ public:
     void Clear();
 
     bool CopyToClipboard();
+    std::string GetSelectedText() const;
+    std::string GetWordAt(int row, int col) const;
 
     bool Focusable() const override { return true; }
     bool OnEvent(ftxui::Event event) override;
@@ -40,6 +42,14 @@ private:
     int scroll_y_ = 0;
     ftxui::Box box_;
     std::string statusMsg_;
+
+    // Mouse selection
+    bool selecting_ = false;
+    bool hasSelection_ = false;
+    int selStartRow_ = -1;
+    int selStartCol_ = -1;
+    int selEndRow_ = -1;
+    int selEndCol_ = -1;
 };
 
 std::shared_ptr<TextEditor> MakeTextEditor(std::string title = "Request Editor");

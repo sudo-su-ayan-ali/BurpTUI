@@ -64,10 +64,6 @@ void TuiApp::buildLayout() {
     auto layout = Container::Vertical({tabToggle, tabContents});
 
     root_ = Renderer(layout, [&, tabToggle, tabContents] {
-        std::string mouseStatus = mouseTracking_
-            ? "Mouse: UI Mode (Hold Shift to select text)"
-            : "Text Select & Right-Click Active";
-
         return vbox(Elements{
             text(" BurpTUI ") | bold | center,
             separator(),
@@ -76,7 +72,7 @@ void TuiApp::buildLayout() {
             tabContents->Render() | flex,
             separator(),
             hbox(Elements{
-                text("  Ctrl+Q: Quit  |  F1-F4: Tabs  |  Tab: Navigate  |  " + mouseStatus) | dim,
+                text("  Ctrl+Q: Quit  |  F1-F4: Tabs  |  Click/Tap Buttons Active  |  Drag / Right-Click text to Copy") | dim,
                 filler(),
                 text("Proxy: " + cfg_.listenHost + ":" + std::to_string(cfg_.listenPort) + "  ") | dim,
             }),

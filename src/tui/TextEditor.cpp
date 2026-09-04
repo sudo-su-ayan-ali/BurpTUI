@@ -1,8 +1,10 @@
 #include "tui/TextEditor.hpp"
 #include "util/Clipboard.hpp"
+#include <ftxui/dom/elements.hpp>
 #include <sstream>
 #include <algorithm>
 #include <iomanip>
+#include <cctype>
 
 namespace BurpTUI {
 
@@ -32,6 +34,8 @@ void TextEditor::SetText(const std::string& text) {
     cursor_col_ = 0;
     scroll_y_ = 0;
     statusMsg_.clear();
+    hasSelection_ = false;
+    selecting_ = false;
 }
 
 std::string TextEditor::GetText() const {
@@ -51,6 +55,8 @@ void TextEditor::Clear() {
     cursor_col_ = 0;
     scroll_y_ = 0;
     statusMsg_ = "Cleared";
+    hasSelection_ = false;
+    selecting_ = false;
 }
 
 bool TextEditor::CopyToClipboard() {
@@ -58,11 +64,63 @@ bool TextEditor::CopyToClipboard() {
     if (text.empty()) return false;
     bool ok = Clipboard::copy(text);
     if (ok) {
-        statusMsg_ = "Copied to clipboard (" + std::to_string(text.size()) + " B)";
+        statusMsg_ = "Copied entire text (" + std::to_string(text.size()) + " B)";
     } else {
         statusMsg_ = "Failed to copy";
     }
     return ok;
+}
+
+std::string TextEditor::GetSelectedText() const {
+    if (!hasSelection_ || lines_.empty()) return "";
+
+    int r1 = selStartRow_, c1 = selStartCol_;
+    int r2 = selEndRow_, c2 = selEndCol_;
+
+    if (r1 > r2 || (r1 == r2 && c1 > c2)) {
+        std::swap(r1, r2);
+        std::swap(c1, c2);
+    }
+
+    r1 = std::max(0, std::min(static_cast<int>(lines_.size()) - 1, r1));
+    r2 = std::max(0, std::min(static_cast<int>(lines_.size()) - 1, r2));
+
+    std::ostringstream oss;
+    for (int r = r1; r <= r2; ++r) {
+        const std::string& line = lines_[r];
+        int start = (r == r1) ? std::max(0, std::min(static_cast<int>(line.size()), c1)) : 0;
+        int end = (r == r2) ? std::max(0, std::min(static_cast<int>(line.size()), c2)) : static_cast<int>(line.size());
+
+        if (start < end) {
+            oss << line.substr(start, end - start);
+        }
+        if (r < r2) {
+            oss << "\r\n";
+        }
+    }
+    return oss.str();
+}
+
+std::string TextEditor::GetWordAt(int row, int col) const {
+    if (row < 0 || row >= static_cast<int>(lines_.size())) return "";
+    const std::string& line = lines_[row];
+    if (col < 0 || col >= static_cast<int>(line.size())) return "";
+
+    auto isWordChar = [](char c) {
+        return std::isalnum(static_cast<unsigned char>(c)) || c == '_' || c == '-' || c == '.' || c == '/' || c == ':' || c == '=' || c == '&' || c == '?';
+    };
+
+    if (!isWordChar(line[col])) return "";
+
+    int start = col;
+    while (start > 0 && isWordChar(line[start - 1])) {
+        start--;
+    }
+    int end = col;
+    while (end < static_cast<int>(line.size()) && isWordChar(line[end])) {
+        end++;
+    }
+    return line.substr(start, end - start);
 }
 
 void TextEditor::ensureCursorVisible(int visibleHeight) {
@@ -94,10 +152,16 @@ void TextEditor::insertString(const std::string& str) {
 
 bool TextEditor::OnEvent(Event event) {
     int visibleHeight = std::max(2, box_.y_max - box_.y_min - 2);
+    int gutterWidth = 6;
 
     // 1. Mouse Interaction
     if (event.is_mouse()) {
         if (box_.Contain(event.mouse().x, event.mouse().y)) {
+            int relY = event.mouse().y - box_.y_min - 1; // account for header border
+            int relX = event.mouse().x - box_.x_min - gutterWidth;
+            int targetRow = std::max(0, std::min(static_cast<int>(lines_.size()) - 1, scroll_y_ + std::max(0, relY)));
+            int targetCol = std::max(0, std::min(static_cast<int>(lines_[targetRow].size()), std::max(0, relX)));
+
             if (event.mouse().button == Mouse::WheelUp) {
                 scroll_y_ = std::max(0, scroll_y_ - 3);
                 return true;
@@ -107,20 +171,72 @@ bool TextEditor::OnEvent(Event event) {
                 scroll_y_ = std::min(maxScroll, scroll_y_ + 3);
                 return true;
             }
+
+            // Left Click Pressed -> Set Cursor & Begin Selection
             if (event.mouse().button == Mouse::Left && event.mouse().motion == Mouse::Pressed) {
                 TakeFocus();
-                int relY = event.mouse().y - box_.y_min - 1; // account for header
-                if (relY >= 0) {
-                    int clickedRow = scroll_y_ + relY;
-                    if (clickedRow >= 0 && clickedRow < static_cast<int>(lines_.size())) {
-                        cursor_row_ = clickedRow;
-                        int gutterWidth = 6;
-                        int relX = event.mouse().x - box_.x_min - gutterWidth;
-                        cursor_col_ = std::max(0, std::min(static_cast<int>(lines_[cursor_row_].size()), relX));
+                cursor_row_ = targetRow;
+                cursor_col_ = targetCol;
+                selStartRow_ = targetRow;
+                selStartCol_ = targetCol;
+                selEndRow_ = targetRow;
+                selEndCol_ = targetCol;
+                selecting_ = true;
+                hasSelection_ = true;
+                return true;
+            }
+
+            // Dragging Selection
+            if (selecting_ && event.mouse().button == Mouse::Left) {
+                cursor_row_ = targetRow;
+                cursor_col_ = targetCol;
+                selEndRow_ = targetRow;
+                selEndCol_ = targetCol;
+                return true;
+            }
+
+            // Left Click Released -> Finalize Selection
+            if (event.mouse().button == Mouse::Left && event.mouse().motion == Mouse::Released) {
+                if (selecting_) {
+                    selecting_ = false;
+                    selEndRow_ = targetRow;
+                    selEndCol_ = targetCol;
+                    if (selStartRow_ == selEndRow_ && std::abs(selStartCol_ - selEndCol_) <= 1) {
+                        hasSelection_ = false;
+                    } else {
+                        std::string sel = GetSelectedText();
+                        if (!sel.empty()) {
+                            Clipboard::copy(sel);
+                            statusMsg_ = "Copied (" + std::to_string(sel.size()) + " B)";
+                        }
                     }
                 }
                 return true;
             }
+
+            // Right Click -> Copy Selection or Word under cursor
+            if (event.mouse().button == Mouse::Right && event.mouse().motion == Mouse::Pressed) {
+                TakeFocus();
+                if (hasSelection_) {
+                    std::string sel = GetSelectedText();
+                    if (!sel.empty()) {
+                        Clipboard::copy(sel);
+                        statusMsg_ = "Copied selection (" + std::to_string(sel.size()) + " B)";
+                    }
+                } else {
+                    std::string word = GetWordAt(targetRow, targetCol);
+                    if (!word.empty()) {
+                        Clipboard::copy(word);
+                        statusMsg_ = "Copied word: " + word;
+                    } else {
+                        CopyToClipboard();
+                    }
+                }
+                return true;
+            }
+        } else if (selecting_ && event.mouse().motion == Mouse::Released) {
+            selecting_ = false;
+            return true;
         }
         return false;
     }
@@ -136,6 +252,7 @@ bool TextEditor::OnEvent(Event event) {
             cursor_col_ = std::min(cursor_col_, static_cast<int>(lines_[cursor_row_].size()));
             ensureCursorVisible(visibleHeight);
         }
+        hasSelection_ = false;
         return true;
     }
     if (event == Event::ArrowDown) {
@@ -144,6 +261,7 @@ bool TextEditor::OnEvent(Event event) {
             cursor_col_ = std::min(cursor_col_, static_cast<int>(lines_[cursor_row_].size()));
             ensureCursorVisible(visibleHeight);
         }
+        hasSelection_ = false;
         return true;
     }
     if (event == Event::ArrowLeft) {
@@ -154,6 +272,7 @@ bool TextEditor::OnEvent(Event event) {
             cursor_col_ = static_cast<int>(lines_[cursor_row_].size());
             ensureCursorVisible(visibleHeight);
         }
+        hasSelection_ = false;
         return true;
     }
     if (event == Event::ArrowRight) {
@@ -164,26 +283,31 @@ bool TextEditor::OnEvent(Event event) {
             cursor_col_ = 0;
             ensureCursorVisible(visibleHeight);
         }
+        hasSelection_ = false;
         return true;
     }
     if (event == Event::Home) {
         cursor_col_ = 0;
+        hasSelection_ = false;
         return true;
     }
     if (event == Event::End) {
         cursor_col_ = static_cast<int>(lines_[cursor_row_].size());
+        hasSelection_ = false;
         return true;
     }
     if (event == Event::PageUp) {
         cursor_row_ = std::max(0, cursor_row_ - 10);
         cursor_col_ = std::min(cursor_col_, static_cast<int>(lines_[cursor_row_].size()));
         ensureCursorVisible(visibleHeight);
+        hasSelection_ = false;
         return true;
     }
     if (event == Event::PageDown) {
         cursor_row_ = std::min(static_cast<int>(lines_.size()) - 1, cursor_row_ + 10);
         cursor_col_ = std::min(cursor_col_, static_cast<int>(lines_[cursor_row_].size()));
         ensureCursorVisible(visibleHeight);
+        hasSelection_ = false;
         return true;
     }
 
@@ -197,6 +321,7 @@ bool TextEditor::OnEvent(Event event) {
         cursor_row_++;
         cursor_col_ = 0;
         ensureCursorVisible(visibleHeight);
+        hasSelection_ = false;
         return true;
     }
 
@@ -212,6 +337,7 @@ bool TextEditor::OnEvent(Event event) {
             cursor_col_ = prevLen;
             ensureCursorVisible(visibleHeight);
         }
+        hasSelection_ = false;
         return true;
     }
 
@@ -223,13 +349,14 @@ bool TextEditor::OnEvent(Event event) {
             lines_.erase(lines_.begin() + cursor_row_ + 1);
             ensureCursorVisible(visibleHeight);
         }
+        hasSelection_ = false;
         return true;
     }
 
     if (event == Event::Tab) {
-        // Insert 4 spaces inside editor
         lines_[cursor_row_].insert(cursor_col_, "    ");
         cursor_col_ += 4;
+        hasSelection_ = false;
         return true;
     }
 
@@ -237,6 +364,7 @@ bool TextEditor::OnEvent(Event event) {
     if (event.is_character()) {
         insertString(event.character());
         ensureCursorVisible(visibleHeight);
+        hasSelection_ = false;
         return true;
     }
 
@@ -254,16 +382,35 @@ Element TextEditor::Render() {
 
     bool isFocused = Focused();
 
+    int r1 = selStartRow_, c1 = selStartCol_;
+    int r2 = selEndRow_, c2 = selEndCol_;
+    if (r1 > r2 || (r1 == r2 && c1 > c2)) {
+        std::swap(r1, r2);
+        std::swap(c1, c2);
+    }
+
     for (int i = scroll_y_; i < totalLines && i < scroll_y_ + visibleHeight; ++i) {
         const std::string& line = lines_[i];
 
-        // Gutter line number
         std::ostringstream gutterOss;
         gutterOss << std::setw(4) << (i + 1) << " │ ";
         auto gutterElem = text(gutterOss.str()) | dim | color(Color::GrayDark);
 
         Element lineContent;
-        if (isFocused && i == cursor_row_) {
+        if (hasSelection_ && i >= r1 && i <= r2) {
+            int start = (i == r1) ? std::max(0, std::min(static_cast<int>(line.size()), c1)) : 0;
+            int end = (i == r2) ? std::max(0, std::min(static_cast<int>(line.size()), c2)) : static_cast<int>(line.size());
+
+            std::string before = line.substr(0, start);
+            std::string selected = (start < end) ? line.substr(start, end - start) : "";
+            std::string after = (end < static_cast<int>(line.size())) ? line.substr(end) : "";
+
+            lineContent = hbox({
+                text(before),
+                text(selected) | bgcolor(Color::CyanLight) | color(Color::Black) | bold,
+                text(after),
+            });
+        } else if (isFocused && i == cursor_row_) {
             std::string before = (cursor_col_ <= static_cast<int>(line.size()))
                                      ? line.substr(0, cursor_col_)
                                      : line;
