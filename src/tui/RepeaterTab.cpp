@@ -51,23 +51,15 @@ Component MakeRepeaterTab() {
         resViewer->CopyToClipboard();
     });
 
-    auto targetRow = Container::Horizontal({
+    auto container = Container::Vertical({
         inputHost,
         inputPort,
         checkHttps,
         sendButton,
         copyReqBtn,
         copyResBtn,
-    });
-
-    auto editorViewerSplit = Container::Vertical({
         reqEditor,
         resViewer,
-    });
-
-    auto container = Container::Vertical({
-        targetRow,
-        editorViewerSplit,
     });
 
     auto syncWithManager = [=]() {

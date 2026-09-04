@@ -87,19 +87,14 @@ Component MakeHistoryTab(
 
     auto menuComp = Menu(entryLabels.get(), selectedIndex.get());
 
-    auto rightControls = Container::Horizontal({
+    auto layout = Container::Vertical({
+        menuComp,
         toRepeaterBtn,
         copyReqBtn,
         copyResBtn,
-    });
-
-    auto detailLayout = Container::Vertical({
-        rightControls,
         reqViewer,
         resViewer,
     });
-
-    auto layout = Container::Horizontal({menuComp, detailLayout});
 
     auto updateActiveDetails = [=]() {
         if (entries->empty()) {

@@ -36,6 +36,12 @@ int App::run() {
         });
 
     proxy_->start();
+    if (!proxy_->isRunning()) {
+        std::cerr << "\n\033[1;31m[ERROR] Failed to start ProxyServer on " << cfg_.listenHost << ":" << cfg_.listenPort
+                  << "\nThe port may already be in use by another instance of burptui or another program.\n"
+                  << "Run 'killall -9 burptui' or run with '--port <port>'.\033[0m\n" << std::endl;
+        return 1;
+    }
     Logger::instance().info("Proxy started on " + cfg_.listenHost + ":" + std::to_string(cfg_.listenPort));
 
     tui.run();

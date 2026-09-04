@@ -72,7 +72,7 @@ void TuiApp::buildLayout() {
             tabContents->Render() | flex,
             separator(),
             hbox(Elements{
-                text("  Ctrl+Q: Quit  |  F1-F4: Tabs  |  Click/Tap Buttons Active  |  Drag / Right-Click text to Copy") | dim,
+                text("  q: Quit  |  1-4 / F1-F4: Tabs  |  Click/Tap Buttons Active  |  Drag text to select & copy  |  Right-click: Copy word") | dim,
                 filler(),
                 text("Proxy: " + cfg_.listenHost + ":" + std::to_string(cfg_.listenPort) + "  ") | dim,
             }),
@@ -88,42 +88,30 @@ void TuiApp::buildLayout() {
             return false;
         }
 
-        // Quit with Ctrl+Q or Ctrl+C
+        // Unconditional global shortcuts
         if (event == Event::Special("\x11") || event == Event::Special("\x03")) {
             screen_.ExitLoopClosure()();
             return true;
         }
+        if (event == Event::F1) { activeTab_ = 0; return true; }
+        if (event == Event::F2) { activeTab_ = 1; historyTab->OnEvent(Event::Custom); return true; }
+        if (event == Event::F3) { activeTab_ = 2; repeaterTab->OnEvent(Event::Custom); return true; }
+        if (event == Event::F4) { activeTab_ = 3; return true; }
 
-        // F1 - F4 to switch tabs
-        if (event == Event::F1) {
-            activeTab_ = 0;
-            return true;
-        }
-        if (event == Event::F2) {
-            activeTab_ = 1;
-            historyTab->OnEvent(Event::Custom);
-            return true;
-        }
-        if (event == Event::F3) {
-            activeTab_ = 2;
-            repeaterTab->OnEvent(Event::Custom);
-            return true;
-        }
-        if (event == Event::F4) {
-            activeTab_ = 3;
+        // Let components process the event first (typing in editor, mouse clicks on buttons, etc.)
+        if (layout->OnEvent(event)) {
             return true;
         }
 
-        // F9 to toggle Mouse Tracking vs Terminal Text Selection
-        if (event == Event::F9) {
-            mouseTracking_ = !mouseTracking_;
-            if (mouseTracking_) {
-                std::cout << "\033[?1000h\033[?1002h\033[?1006h" << std::flush;
-            } else {
-                std::cout << "\033[?1000l\033[?1002l\033[?1003l\033[?1006l\033[?1015l\033[?9l" << std::flush;
-            }
+        // Fallback hotkeys if not consumed by an active editor/input:
+        if (event == Event::Character('q') || event == Event::Character('Q')) {
+            screen_.ExitLoopClosure()();
             return true;
         }
+        if (event == Event::Character('1')) { activeTab_ = 0; return true; }
+        if (event == Event::Character('2')) { activeTab_ = 1; historyTab->OnEvent(Event::Custom); return true; }
+        if (event == Event::Character('3')) { activeTab_ = 2; repeaterTab->OnEvent(Event::Custom); return true; }
+        if (event == Event::Character('4')) { activeTab_ = 3; return true; }
 
         return false;
     });

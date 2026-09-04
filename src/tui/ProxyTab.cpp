@@ -97,32 +97,16 @@ Component MakeProxyTab(
         liveResViewer->CopyToClipboard();
     });
 
-    auto btnContainer = Container::Horizontal({
+    auto mainLayout = Container::Vertical({
         toggleButton,
         forwardButton,
         dropButton,
         toRepeaterButton,
         copyReqButton,
         copyResButton,
-    });
-
-    auto interceptContainer = Container::Vertical({
         interceptEditor,
-    });
-
-    auto liveContainer = Container::Horizontal({
         liveReqViewer,
         liveResViewer,
-    });
-
-    auto contentTabs = Container::Tab({
-        interceptContainer,
-        liveContainer,
-    }, &state->viewMode);
-
-    auto mainLayout = Container::Vertical({
-        btnContainer,
-        contentTabs,
     });
 
     return Renderer(mainLayout, [=] {
