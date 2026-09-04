@@ -1,9 +1,11 @@
 #include "proxy/Session.hpp"
 #include "proxy/MitmSession.hpp"
+#include "proxy/SslInit.hpp"
 #include "http/HttpRequest.hpp"
 #include "http/HttpResponse.hpp"
 #include "util/Logger.hpp"
 #include <iostream>
+#include <fstream>
 
 namespace BurpTUI {
 
@@ -179,6 +181,21 @@ void Session::handleClientRead(boost::system::error_code ec, std::size_t bytes_t
             if (colon != std::string::npos) {
                 host = hostPort.substr(0, colon);
                 port = hostPort.substr(colon + 1);
+            }
+
+            // Check for Burp-style CA certificate download endpoints:
+            // e.g. http://burp, http://burptui, http://burp/cert, /cert, or http://127.0.0.1:8080/cert
+            std::string hostLower = host;
+            for (auto& c : hostLower) c = static_cast<char>(std::tolower(c));
+            if (hostLower == "burp" || hostLower == "burptui" ||
+                req->url == "/cert" || req->url.ends_with("/cert") ||
+                ((hostLower == "127.0.0.1" || hostLower == "localhost") && (req->url == "/cert" || req->url.find("/cert") != std::string::npos))) {
+                if (req->url == "/cert" || req->url.ends_with("/cert") || req->url.find("/cert") != std::string::npos) {
+                    serveCaCert();
+                } else {
+                    serveBurpHelpPage();
+                }
+                return;
             }
 
             currentTransaction_.host = host;
@@ -460,6 +477,97 @@ void Session::sendErrorResponse(int statusCode, const std::string& statusText) {
     }
     
     auto self = shared_from_this();
+    closeAfterWrite_ = true;
+    writeClient(response);
+}
+
+void Session::serveCaCert() {
+    std::string certContent;
+    X509* caCert = SslInit::instance().caCert();
+    if (caCert) {
+        BIO* bio = BIO_new(BIO_s_mem());
+        if (bio) {
+            if (PEM_write_bio_X509(bio, caCert)) {
+                char* data = nullptr;
+                long len = BIO_get_mem_data(bio, &data);
+                if (data && len > 0) {
+                    certContent.assign(data, static_cast<size_t>(len));
+                }
+            }
+            BIO_free(bio);
+        }
+    }
+
+    if (certContent.empty()) {
+        std::string certPath = SslInit::instance().caCertPath();
+        std::ifstream ifs(certPath, std::ios::binary);
+        if (ifs) {
+            std::ostringstream oss;
+            oss << ifs.rdbuf();
+            certContent = oss.str();
+        }
+    }
+
+    if (certContent.empty()) {
+        Logger::instance().error("serveCaCert: CA certificate not available");
+        sendErrorResponse(500, "CA Certificate Not Found");
+        return;
+    }
+
+    std::string response = "HTTP/1.1 200 OK\r\n"
+                           "Content-Type: application/x-x509-ca-cert\r\n"
+                           "Content-Disposition: attachment; filename=\"burptui-ca.crt\"\r\n"
+                           "Content-Length: " + std::to_string(certContent.size()) + "\r\n"
+                           "Connection: close\r\n"
+                           "\r\n" + certContent;
+
+    currentTransaction_.response = std::make_shared<HttpResponse>();
+    currentTransaction_.response->version = "HTTP/1.1";
+    currentTransaction_.response->statusCode = 200;
+    currentTransaction_.response->statusText = "OK";
+    if (onTransaction_) {
+        onTransaction_(currentTransaction_);
+    }
+
+    closeAfterWrite_ = true;
+    writeClient(response);
+}
+
+void Session::serveBurpHelpPage() {
+    std::string certPath = SslInit::instance().caCertPath();
+    std::string html = 
+        "<!DOCTYPE html><html><head><meta charset=\"utf-8\">"
+        "<title>BurpTUI CA Certificate</title>"
+        "<style>"
+        "body{font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,sans-serif;background:#14141e;color:#eee;text-align:center;padding:60px 20px;}"
+        ".card{max-width:540px;margin:0 auto;background:#1e1e2d;border:1px solid #333348;border-radius:12px;padding:40px 30px;box-shadow:0 8px 30px rgba(0,0,0,0.5);}"
+        "h1{color:#00ff88;margin-top:0;font-size:28px;}"
+        "p{line-height:1.6;color:#bbb;font-size:15px;}"
+        ".btn{display:inline-block;margin-top:20px;padding:12px 28px;background:#00b0ff;color:#000;font-weight:bold;font-size:16px;text-decoration:none;border-radius:6px;}"
+        ".btn:hover{background:#00ff88;}"
+        "code{background:#0d0d14;padding:4px 8px;border-radius:4px;color:#00ff88;font-size:13px;word-break:break-all;}"
+        "</style></head><body>"
+        "<div class=\"card\">"
+        "<h1>BurpTUI Proxy</h1>"
+        "<p>To intercept and inspect encrypted HTTPS traffic without browser security warnings, download and trust the BurpTUI Root CA certificate.</p>"
+        "<a class=\"btn\" href=\"/cert\">Download CA Certificate</a>"
+        "<p style=\"margin-top:28px;font-size:13px;color:#777;\">Certificate file path on system:<br><br><code>" + certPath + "</code></p>"
+        "</div></body></html>";
+
+    std::string response = "HTTP/1.1 200 OK\r\n"
+                           "Content-Type: text/html; charset=utf-8\r\n"
+                           "Content-Length: " + std::to_string(html.size()) + "\r\n"
+                           "Connection: close\r\n"
+                           "\r\n" + html;
+
+    currentTransaction_.response = std::make_shared<HttpResponse>();
+    currentTransaction_.response->version = "HTTP/1.1";
+    currentTransaction_.response->statusCode = 200;
+    currentTransaction_.response->statusText = "OK";
+    if (onTransaction_) {
+        onTransaction_(currentTransaction_);
+    }
+
     closeAfterWrite_ = true;
     writeClient(response);
 }

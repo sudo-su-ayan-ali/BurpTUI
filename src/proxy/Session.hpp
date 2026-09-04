@@ -43,6 +43,8 @@ private:
     void doServerWrite();
     void handleServerWrite(boost::system::error_code ec, std::size_t bytes_transferred);
     void sendErrorResponse(int statusCode, const std::string& statusText);
+    void serveCaCert();
+    void serveBurpHelpPage();
     void resetTimer();
     void handleTimeout(boost::system::error_code ec);
 

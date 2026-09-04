@@ -280,3 +280,33 @@ TEST_F(MitmSessionTest, HandlesUpstreamConnectionFailure) {
 
     proxy.stop();
 }
+
+TEST_F(MitmSessionTest, ServesCaCertAtBurpCertEndpoint) {
+    boost::asio::io_context probeIoc;
+    tcp::acceptor probeAcceptor(probeIoc, tcp::endpoint(boost::asio::ip::make_address("127.0.0.1"), 0));
+    std::uint16_t proxyPort = probeAcceptor.local_endpoint().port();
+    probeAcceptor.close();
+
+    BurpTUI::ProxyServer proxy("127.0.0.1", proxyPort);
+    proxy.start();
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    // Request http://burp/cert
+    boost::asio::io_context clientIoc;
+    tcp::socket clientSocket(clientIoc);
+    clientSocket.connect(tcp::endpoint(boost::asio::ip::make_address("127.0.0.1"), proxyPort));
+
+    std::string req = "GET http://burp/cert HTTP/1.1\r\nHost: burp\r\nConnection: close\r\n\r\n";
+    boost::asio::write(clientSocket, boost::asio::buffer(req));
+
+    std::array<char, 4096> respBuf{};
+    boost::system::error_code ec;
+    size_t n = clientSocket.read_some(boost::asio::buffer(respBuf), ec);
+    std::string resp(respBuf.data(), n);
+
+    EXPECT_NE(resp.find("HTTP/1.1 200 OK"), std::string::npos);
+    EXPECT_NE(resp.find("application/x-x509-ca-cert"), std::string::npos);
+    EXPECT_NE(resp.find("BEGIN CERTIFICATE"), std::string::npos);
+
+    proxy.stop();
+}
