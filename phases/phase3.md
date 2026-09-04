@@ -93,10 +93,10 @@ The proxy must intercept the initial connection request, establish an encrypted 
 
 ## Completion Checklist
 
-- [ ] Root CA certificate and private key are generated and stored locally
-- [ ] Per-host certificates are dynamically minted and signed by the Root CA
-- [ ] CertCache prevents redundant certificate generation across concurrent requests
-- [ ] CONNECT tunnels are established and the proxy responds with 200 Connection Established
-- [ ] ALPN negotiation forces HTTP/1.1 downgrade
-- [ ] Decrypted HTTPS traffic appears in the History tab identically to HTTP traffic
-- [ ] TLS handshake failures are handled gracefully without crashing
+- [x] Root CA certificate and private key are generated and stored locally
+- [x] Per-host certificates are dynamically minted and signed by the Root CA
+- [x] CertCache prevents redundant certificate generation across concurrent requests
+- [x] CONNECT tunnels are established and the proxy responds with 200 Connection Established
+- [x] ALPN negotiation forces HTTP/1.1 downgrade
+- [x] Decrypted HTTPS traffic appears in the History tab identically to HTTP traffic
+- [x] TLS handshake failures are handled gracefully without crashing

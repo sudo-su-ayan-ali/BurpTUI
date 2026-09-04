@@ -11,6 +11,7 @@
 
 namespace BurpTUI {
 
+class CertCache;
 using TransactionCallback = std::function<void(HttpTransaction)>;
 
 /// Handles one client connection: reads HTTP request, connects to upstream,
@@ -19,7 +20,8 @@ class Session : public std::enable_shared_from_this<Session> {
 public:
     Session(boost::asio::ip::tcp::socket clientSocket,
             TransactionCallback onTransaction,
-            std::atomic<int>& nextId);
+            std::atomic<int>& nextId,
+            std::shared_ptr<CertCache> certCache = nullptr);
     ~Session();
     
     void start();
@@ -50,6 +52,7 @@ private:
     boost::asio::steady_timer timer_;
     TransactionCallback onTransaction_;
     std::atomic<int>& nextId_;
+    std::shared_ptr<CertCache> certCache_;
 
     std::array<char, 8192> clientBuffer_;
     std::array<char, 8192> serverBuffer_;

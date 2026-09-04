@@ -1,4 +1,5 @@
 #include "proxy/Session.hpp"
+#include "proxy/MitmSession.hpp"
 #include "http/HttpRequest.hpp"
 #include "http/HttpResponse.hpp"
 #include "util/Logger.hpp"
@@ -8,13 +9,15 @@ namespace BurpTUI {
 
 Session::Session(boost::asio::ip::tcp::socket clientSocket,
                  TransactionCallback onTransaction,
-                 std::atomic<int>& nextId)
+                 std::atomic<int>& nextId,
+                 std::shared_ptr<CertCache> certCache)
     : clientSocket_(std::move(clientSocket)),
       serverSocket_(clientSocket_.get_executor()),
       resolver_(clientSocket_.get_executor()),
       timer_(clientSocket_.get_executor()),
       onTransaction_(std::move(onTransaction)),
-      nextId_(nextId) {
+      nextId_(nextId),
+      certCache_(std::move(certCache)) {
 }
 
 Session::~Session() {
@@ -102,7 +105,6 @@ void Session::handleClientRead(boost::system::error_code ec, std::size_t bytes_t
             
             // Handle CONNECT method (HTTPS tunneling — Phase 3 full MITM)
             if (req->method == "CONNECT") {
-                isConnect_ = true;
                 // Parse host:port from URL (CONNECT host:port HTTP/1.1)
                 std::string hostPort = req->url;
                 std::string host = hostPort;
@@ -113,7 +115,7 @@ void Session::handleClientRead(boost::system::error_code ec, std::size_t bytes_t
                     port = hostPort.substr(colon + 1);
                 }
                 currentTransaction_.host = host;
-                currentTransaction_.port = std::stoi(port);
+                currentTransaction_.port = std::stoi(port.empty() ? "443" : port);
                 currentTransaction_.is_https = true;
                 
                 // Respond with 200 and log the CONNECT tunnel
@@ -124,9 +126,27 @@ void Session::handleClientRead(boost::system::error_code ec, std::size_t bytes_t
                 if (onTransaction_) {
                     onTransaction_(currentTransaction_);
                 }
+
+                if (certCache_) {
+                    boost::system::error_code ignored;
+                    timer_.cancel(ignored);
+                    auto mitmSession = std::make_shared<MitmSession>(
+                        std::move(clientSocket_),
+                        host,
+                        static_cast<std::uint16_t>(std::stoi(port.empty() ? "443" : port)),
+                        onTransaction_,
+                        nextId_,
+                        certCache_
+                    );
+                    mitmSession->start();
+                    return;
+                }
+
+                // Fallback to blind tunnel if no certCache_ available
+                isConnect_ = true;
                 upstreamHost_ = host;
                 upstreamPort_ = port;
-                Logger::instance().info("CONNECT tunnel requested for: " + host + ":" + port);
+                Logger::instance().info("CONNECT tunnel fallback (blind) for: " + host + ":" + port);
                 connectUpstream();
                 return;
             }

@@ -6,11 +6,14 @@
 
 namespace BurpTUI {
 
+class CertCache;
+
 class ProxyServer {
 public:
     explicit ProxyServer(const std::string& host,
                          std::uint16_t port,
-                         TransactionCallback onTransaction = {});
+                         TransactionCallback onTransaction = {},
+                         std::shared_ptr<CertCache> certCache = nullptr);
     ~ProxyServer();
 
     void start();  ///< Non-blocking; launches io_context on a background thread

@@ -1,5 +1,7 @@
 #include "proxy/ProxyServer.hpp"
 #include "proxy/Session.hpp"
+#include "proxy/CertGenerator.hpp"
+#include "proxy/CertCache.hpp"
 #include "util/Logger.hpp"
 #include <boost/asio.hpp>
 #include <thread>
@@ -15,14 +17,23 @@ struct ProxyServer::Impl {
     boost::asio::io_context io_context_;
     boost::asio::ip::tcp::acceptor acceptor_;
     boost::asio::executor_work_guard<boost::asio::io_context::executor_type> work_guard_;
-    
+
+    std::unique_ptr<CertGenerator> defaultCertGen_;
+    std::shared_ptr<CertCache> certCache_;
+
     std::thread thread_;
     std::atomic<bool> running_{false};
     std::atomic<int> nextId_{1};
 
-    Impl(const std::string& host, std::uint16_t port, TransactionCallback cb)
+    Impl(const std::string& host, std::uint16_t port, TransactionCallback cb, std::shared_ptr<CertCache> certCache)
         : host_(host), port_(port), onTransaction_(std::move(cb)),
-          acceptor_(io_context_), work_guard_(boost::asio::make_work_guard(io_context_)) {}
+          acceptor_(io_context_), work_guard_(boost::asio::make_work_guard(io_context_)),
+          certCache_(std::move(certCache)) {
+        if (!certCache_) {
+            defaultCertGen_ = std::make_unique<CertGenerator>();
+            certCache_ = std::make_shared<CertCache>(*defaultCertGen_);
+        }
+    }
 
     void doAccept() {
         if (!running_) return;
@@ -31,7 +42,7 @@ struct ProxyServer::Impl {
             [this](boost::system::error_code ec, boost::asio::ip::tcp::socket socket) {
                 Logger::instance().debug("async_accept callback fired");
                 if (!ec) {
-                    auto session = std::make_shared<Session>(std::move(socket), onTransaction_, nextId_);
+                    auto session = std::make_shared<Session>(std::move(socket), onTransaction_, nextId_, certCache_);
                     session->start();
                 } else if (running_) {
                     Logger::instance().error("Accept error: " + ec.message());
@@ -41,8 +52,8 @@ struct ProxyServer::Impl {
     }
 };
 
-ProxyServer::ProxyServer(const std::string& host, std::uint16_t port, TransactionCallback onTransaction)
-    : impl_(std::make_unique<Impl>(host, port, std::move(onTransaction))) {
+ProxyServer::ProxyServer(const std::string& host, std::uint16_t port, TransactionCallback onTransaction, std::shared_ptr<CertCache> certCache)
+    : impl_(std::make_unique<Impl>(host, port, std::move(onTransaction), std::move(certCache))) {
 }
 
 ProxyServer::~ProxyServer() {
