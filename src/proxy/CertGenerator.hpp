@@ -12,6 +12,7 @@ public:
         std::string keyPem;
     };
 
+    CertGenerator();
     explicit CertGenerator(const std::string& caKeyPath,
                            const std::string& caCertPath);
     ~CertGenerator();
