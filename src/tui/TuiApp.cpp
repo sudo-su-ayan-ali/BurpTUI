@@ -31,11 +31,13 @@ void TuiApp::buildLayout() {
     tabNames_ = {" Proxy ", " History ", " Repeater ", " Decoder "};
     auto tabToggle = Toggle(&tabNames_, &activeTab_);
 
-    auto historyTab = MakeHistoryTab(txQueue_, &screen_);
+    auto sharedEntries = std::make_shared<std::vector<HttpTransaction>>();
+    auto historyTab = MakeHistoryTab(txQueue_, &screen_, sharedEntries);
+    auto proxyTab = MakeProxyTab(cfg_, sharedEntries);
 
     auto tabContents = Container::Tab(
         {
-            MakeProxyTab(),
+            proxyTab,
             historyTab,
             MakeRepeaterTab(),
             MakeDecoderTab(),
