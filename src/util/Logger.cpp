@@ -2,7 +2,6 @@
 #include <chrono>
 #include <ctime>
 #include <iomanip>
-#include <iostream>
 #include <sstream>
 
 namespace BurpTUI {
@@ -12,9 +11,28 @@ Logger& Logger::instance() {
     return inst;
 }
 
+Logger::Logger() {
+    fileStream_.open("burptui.log", std::ios::app);
+}
+
+Logger::~Logger() {
+    std::scoped_lock lk(mtx_);
+    if (fileStream_.is_open()) {
+        fileStream_.close();
+    }
+}
+
 void Logger::setLevel(LogLevel lvl) {
     std::scoped_lock lk(mtx_);
     level_ = lvl;
+}
+
+void Logger::setLogFile(const std::string& path) {
+    std::scoped_lock lk(mtx_);
+    if (fileStream_.is_open()) {
+        fileStream_.close();
+    }
+    fileStream_.open(path, std::ios::app);
 }
 
 void Logger::log(LogLevel lvl, std::string_view msg) {
@@ -32,7 +50,11 @@ void Logger::log(LogLevel lvl, std::string_view msg) {
     std::ostringstream oss;
     oss << std::put_time(std::gmtime(&t), "%H:%M:%S")
         << " [" << tag << "] " << msg << "\n";
-    std::cerr << oss.str();
+
+    if (fileStream_.is_open()) {
+        fileStream_ << oss.str();
+        fileStream_.flush();
+    }
 }
 
 } // namespace BurpTUI

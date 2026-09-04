@@ -17,3 +17,4 @@ compile_commands.json
 # Runtime artefacts
 *.db
 *.log
+ca/

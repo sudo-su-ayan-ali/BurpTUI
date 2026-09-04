@@ -10,6 +10,7 @@ struct Config {
     std::string  dbPath      = "burptui.db";
     std::string  caDir       = "./ca";
     bool         verbose     = false;
+    bool         enableMouse = false;
 };
 
 } // namespace BurpTUI

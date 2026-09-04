@@ -2,7 +2,6 @@
 #include <string>
 #include <string_view>
 #include <fstream>
-#include <iostream>
 #include <mutex>
 
 namespace BurpTUI {
@@ -14,6 +13,7 @@ public:
     static Logger& instance();
 
     void setLevel(LogLevel lvl);
+    void setLogFile(const std::string& path);
     void log(LogLevel lvl, std::string_view msg);
 
     void debug(std::string_view msg) { log(LogLevel::DEBUG, msg); }
@@ -22,9 +22,15 @@ public:
     void error(std::string_view msg) { log(LogLevel::ERROR, msg); }
 
 private:
-    Logger() = default;
-    std::mutex  mtx_;
-    LogLevel    level_ = LogLevel::DEBUG;
+    Logger();
+    ~Logger();
+
+    Logger(const Logger&) = delete;
+    Logger& operator=(const Logger&) = delete;
+
+    std::mutex    mtx_;
+    LogLevel      level_ = LogLevel::DEBUG;
+    std::ofstream fileStream_;
 };
 
 } // namespace BurpTUI

@@ -30,6 +30,7 @@ public:
 private:
     void readClient();
     void handleClientRead(boost::system::error_code ec, std::size_t bytes_transferred);
+    void forwardRequest();
     void connectUpstream();
     void handleUpstreamConnect(boost::system::error_code ec, boost::asio::ip::tcp::resolver::results_type results);
     void writeUpstream();

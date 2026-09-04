@@ -45,6 +45,7 @@ set(BURPTUI_SOURCES
     src/proxy/CertGenerator.cpp
     src/proxy/CertCache.cpp
     src/proxy/SslInit.cpp
+    src/proxy/InterceptManager.cpp
 
     # HTTP parsing
     src/http/HttpParser.cpp
@@ -62,10 +63,15 @@ set(BURPTUI_SOURCES
     src/tui/RepeaterTab.cpp
     src/tui/DecoderTab.cpp
     src/tui/Widgets.cpp
+    src/tui/HttpFormatter.cpp
+    src/tui/ScrollableViewer.cpp
+    src/tui/TextEditor.cpp
+    src/tui/RepeaterManager.cpp
 
     # Utilities
     src/util/Logger.cpp
     src/util/Encoding.cpp
+    src/util/Clipboard.cpp
 )
 
 # ── Main executable ──────────────────────────────────────

@@ -1,11 +1,15 @@
 #include "proxy/Session.hpp"
 #include "proxy/MitmSession.hpp"
+#include "proxy/CertCache.hpp"
 #include "proxy/SslInit.hpp"
+#include "proxy/InterceptManager.hpp"
 #include "http/HttpRequest.hpp"
 #include "http/HttpResponse.hpp"
 #include "util/Logger.hpp"
 #include <iostream>
 #include <fstream>
+#include <sstream>
+#include <cctype>
 
 namespace BurpTUI {
 
@@ -35,6 +39,9 @@ void Session::start() {
 void Session::close() {
     boost::system::error_code ec;
     timer_.cancel(ec);
+    if (currentTransaction_.id != 0) {
+        InterceptManager::instance().removeById(currentTransaction_.id);
+    }
     if (clientSocket_.is_open()) {
         clientSocket_.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
         clientSocket_.close(ec);
@@ -202,25 +209,36 @@ void Session::handleClientRead(boost::system::error_code ec, std::size_t bytes_t
             currentTransaction_.port = std::stoi(port.empty() ? "80" : port);
             currentTransaction_.is_https = false;
             
-            std::string prevHost = upstreamHost_;
-            std::string prevPort = upstreamPort_;
-            
             upstreamHost_ = host;
             upstreamPort_ = port.empty() ? "80" : port;
             
-            if (serverSocket_.is_open() && upstreamHost_ == prevHost && upstreamPort_ == prevPort) {
-                Logger::instance().debug("Reusing upstream connection for: " + upstreamHost_ + ":" + upstreamPort_);
-                writeUpstream();
-            } else {
-                if (serverSocket_.is_open()) {
-                    boost::system::error_code ec2;
-                    serverSocket_.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec2);
-                    serverSocket_.close(ec2);
-                }
-                serverSocket_ = boost::asio::ip::tcp::socket(clientSocket_.get_executor());
-                Logger::instance().debug("Proxying: " + req->method + " " + host + ":" + upstreamPort_ + req->url);
-                connectUpstream();
+            if (InterceptManager::instance().isInterceptEnabled()) {
+                boost::system::error_code ignored;
+                timer_.cancel(ignored);
+                auto self = shared_from_this();
+                InterceptManager::instance().interceptRequest(
+                    currentTransaction_.id,
+                    /*isHttps=*/false,
+                    upstreamHost_,
+                    static_cast<std::uint16_t>(currentTransaction_.port),
+                    currentTransaction_.request,
+                    [this, self](InterceptAction action) {
+                        boost::asio::post(clientSocket_.get_executor(), [this, self, action]() {
+                            if (!clientSocket_.is_open()) return;
+                            resetTimer();
+                            if (action == InterceptAction::Forward) {
+                                forwardRequest();
+                            } else {
+                                Logger::instance().info("Session: Dropping HTTP request #" + std::to_string(currentTransaction_.id));
+                                sendErrorResponse(502, "Request Dropped by BurpTUI");
+                            }
+                        });
+                    }
+                );
+                return;
             }
+
+            forwardRequest();
         } else {
             // Parser returned true but no complete request yet — keep reading
             readClient();
@@ -235,6 +253,18 @@ void Session::handleClientRead(boost::system::error_code ec, std::size_t bytes_t
             sendErrorResponse(400, "Bad Request");
         }
     }
+}
+
+void Session::forwardRequest() {
+    if (!clientSocket_.is_open()) return;
+    if (serverSocket_.is_open()) {
+        boost::system::error_code ec2;
+        serverSocket_.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec2);
+        serverSocket_.close(ec2);
+    }
+    serverSocket_ = boost::asio::ip::tcp::socket(clientSocket_.get_executor());
+    Logger::instance().debug("Proxying: " + currentTransaction_.request->method + " " + upstreamHost_ + ":" + upstreamPort_ + currentTransaction_.request->url);
+    connectUpstream();
 }
 
 void Session::connectUpstream() {

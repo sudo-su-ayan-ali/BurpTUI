@@ -1,5 +1,6 @@
 #include "tui/DecoderTab.hpp"
 #include "tui/Widgets.hpp"
+#include "tui/HttpFormatter.hpp"
 #include "util/Encoding.hpp"
 #include <ftxui/component/component.hpp>
 #include <ftxui/dom/elements.hpp>
@@ -64,7 +65,7 @@ ftxui::Component MakeDecoderTab() {
                 Widgets::Panel("Transform Mode", modeMenu->Render()) | size(WIDTH, EQUAL, 24),
                 Widgets::Panel("Input Buffer", inputComp->Render() | flex) | flex,
             }) | size(HEIGHT, EQUAL, 10),
-            Widgets::Panel("Output Result", paragraph(state->outputText) | flex) | flex,
+            Widgets::Panel("Output Result", vbox({FormatBodyElement(state->outputText)}) | vscroll_indicator | yframe | flex) | flex,
             Widgets::StatusBar("Decoder Active", "Transform count: " + std::to_string(state->inputText.size())),
         });
     });

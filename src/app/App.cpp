@@ -1,5 +1,6 @@
 #include "App.hpp"
 #include "proxy/ProxyServer.hpp"
+#include "proxy/InterceptManager.hpp"
 #include "tui/TuiApp.hpp"
 #include "util/Logger.hpp"
 #include "proxy/SslInit.hpp"
@@ -24,6 +25,7 @@ int App::run() {
 
     TuiApp tui(cfg_, txQueue_);
     auto trigger = tui.getUpdateTrigger();
+    InterceptManager::instance().setNotifyCallback(trigger);
     auto queue = txQueue_;
     
     proxy_ = std::make_unique<ProxyServer>(

@@ -26,6 +26,7 @@ private:
     int activeTab_ = 0;
     std::vector<std::string> tabNames_;
     std::atomic<bool> updatePending_{false};
+    bool mouseTracking_ = false;
     void buildLayout();
 };
 

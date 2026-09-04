@@ -1,4 +1,5 @@
 #include "proxy/MitmSession.hpp"
+#include "proxy/InterceptManager.hpp"
 #include "util/Logger.hpp"
 #include <openssl/ssl.h>
 #include <openssl/err.h>
@@ -36,6 +37,10 @@ void MitmSession::start() {
 void MitmSession::close() {
     if (isClosed_) return;
     isClosed_ = true;
+
+    if (currentTransaction_.id != 0) {
+        InterceptManager::instance().removeById(currentTransaction_.id);
+    }
 
     boost::system::error_code ec;
     timer_.cancel(ec);
@@ -125,15 +130,29 @@ void MitmSession::sendEstablishedResponse() {
 
 void MitmSession::sendErrorResponse(int statusCode, const std::string& statusText) {
     if (isClosed_) return;
-    auto self = shared_from_this();
     std::string response = "HTTP/1.1 " + std::to_string(statusCode) + " " + statusText + "\r\n"
                            "Content-Length: 0\r\n"
                            "Connection: close\r\n\r\n";
-    boost::asio::async_write(
-        rawClientSocket_, boost::asio::buffer(response),
-        [this, self](boost::system::error_code /*ec*/, std::size_t /*bytes_transferred*/) {
-            close();
-        });
+    closeAfterWrite_ = true;
+
+    currentTransaction_.response = std::make_shared<HttpResponse>();
+    currentTransaction_.response->version = "HTTP/1.1";
+    currentTransaction_.response->statusCode = statusCode;
+    currentTransaction_.response->statusText = statusText;
+    if (onTransaction_) {
+        onTransaction_(currentTransaction_);
+    }
+
+    if (clientHandshakeDone_ && clientStream_) {
+        writeClient(std::move(response));
+    } else {
+        auto self = shared_from_this();
+        boost::asio::async_write(
+            rawClientSocket_, boost::asio::buffer(response),
+            [this, self](boost::system::error_code /*ec*/, std::size_t /*bytes_transferred*/) {
+                close();
+            });
+    }
 }
 
 void MitmSession::startTlsHandshakes() {
@@ -256,6 +275,34 @@ void MitmSession::handleClientRead(boost::system::error_code ec, std::size_t byt
             currentTransaction_.port = targetPort_;
             currentTransaction_.is_https = true;
             currentTransaction_.request = std::make_shared<HttpRequest>(*req);
+
+            if (InterceptManager::instance().isInterceptEnabled()) {
+                boost::system::error_code ignored;
+                timer_.cancel(ignored);
+                auto self = shared_from_this();
+                InterceptManager::instance().interceptRequest(
+                    currentTransaction_.id,
+                    /*isHttps=*/true,
+                    targetHost_,
+                    targetPort_,
+                    currentTransaction_.request,
+                    [this, self](InterceptAction action) {
+                        boost::asio::post(rawClientSocket_.get_executor(), [this, self, action]() {
+                            if (isClosed_) return;
+                            resetTimer();
+                            if (action == InterceptAction::Forward) {
+                                Logger::instance().debug("MitmSession: Forwarding HTTPS " + currentTransaction_.request->method + " " + currentTransaction_.request->url);
+                                std::string serialized = currentTransaction_.request->serialize();
+                                writeUpstream(std::move(serialized));
+                            } else {
+                                Logger::instance().info("MitmSession: Dropping HTTPS request #" + std::to_string(currentTransaction_.id));
+                                sendErrorResponse(502, "Request Dropped by BurpTUI");
+                            }
+                        });
+                    }
+                );
+                return;
+            }
 
             Logger::instance().debug("MitmSession: Forwarding HTTPS " + req->method + " " + req->url);
 

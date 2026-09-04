@@ -13,6 +13,7 @@ set(LIB_SOURCES
     ${CMAKE_SOURCE_DIR}/src/proxy/CertGenerator.cpp
     ${CMAKE_SOURCE_DIR}/src/proxy/CertCache.cpp
     ${CMAKE_SOURCE_DIR}/src/proxy/SslInit.cpp
+    ${CMAKE_SOURCE_DIR}/src/proxy/InterceptManager.cpp
 
     # HTTP parsing
     ${CMAKE_SOURCE_DIR}/src/http/HttpParser.cpp
@@ -30,10 +31,15 @@ set(LIB_SOURCES
     ${CMAKE_SOURCE_DIR}/src/tui/RepeaterTab.cpp
     ${CMAKE_SOURCE_DIR}/src/tui/DecoderTab.cpp
     ${CMAKE_SOURCE_DIR}/src/tui/Widgets.cpp
+    ${CMAKE_SOURCE_DIR}/src/tui/HttpFormatter.cpp
+    ${CMAKE_SOURCE_DIR}/src/tui/ScrollableViewer.cpp
+    ${CMAKE_SOURCE_DIR}/src/tui/TextEditor.cpp
+    ${CMAKE_SOURCE_DIR}/src/tui/RepeaterManager.cpp
 
     # Utilities
     ${CMAKE_SOURCE_DIR}/src/util/Logger.cpp
     ${CMAKE_SOURCE_DIR}/src/util/Encoding.cpp
+    ${CMAKE_SOURCE_DIR}/src/util/Clipboard.cpp
 )
 
 add_library(burptui_lib STATIC ${LIB_SOURCES})
@@ -75,3 +81,6 @@ add_burptui_test(test_cert_generator test_cert_generator.cpp)
 add_burptui_test(test_cert_cache     test_cert_cache.cpp)
 add_burptui_test(test_event_queue    test_event_queue.cpp)
 add_burptui_test(test_mitm_session   test_mitm_session.cpp)
+add_burptui_test(test_intercept_manager test_intercept_manager.cpp)
+add_burptui_test(test_clipboard         test_clipboard.cpp)
+add_burptui_test(test_repeater          test_repeater.cpp)
