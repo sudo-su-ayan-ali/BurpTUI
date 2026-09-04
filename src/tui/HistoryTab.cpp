@@ -16,7 +16,7 @@ using namespace ftxui;
 namespace {
 
 // Clean text: strip \r and replace dangerous ANSI control characters that break terminal layout
-std::string SanitizeText(std::string_view input, std::size_t maxLen = 8192) {
+std::string SanitizeText(std::string_view input, std::size_t maxLen = 4096) {
     std::string out;
     out.reserve(std::min(input.size(), maxLen));
     std::size_t count = 0;
@@ -90,38 +90,116 @@ std::string FormatHexDump(std::string_view data, std::size_t maxBytes = 256) {
         oss << "|\n";
     }
     if (data.size() > limit) {
-        oss << "\n[ ... " << (data.size() - limit) << " additional binary bytes omitted ... ]\n";
+        oss << "[ ... " << (data.size() - limit) << " additional binary bytes omitted ... ]\n";
     }
     return oss.str();
 }
 
-std::string FormatBody(std::string_view body, std::string_view contentType) {
-    if (body.empty()) return "(Empty body)";
+Element FormatBodyElement(const std::string& body, const std::string& contentType) {
+    if (body.empty()) {
+        return text("(Empty body)") | dim;
+    }
     if (IsBinaryData(body, contentType)) {
-        std::ostringstream oss;
-        oss << "[ Binary Payload: " << body.size() << " bytes | Content-Type: "
-            << (contentType.empty() ? "unknown" : contentType) << " ]\n\n";
-        oss << FormatHexDump(body, 256);
-        return oss.str();
+        Elements binaryElements;
+        binaryElements.push_back(
+            text("[ Binary Payload: " + std::to_string(body.size()) + " bytes | Content-Type: " + 
+                 (contentType.empty() ? "unknown" : contentType) + " ]") | color(Color::YellowLight)
+        );
+        binaryElements.push_back(text(""));
+        
+        std::string hex = FormatHexDump(body, 256);
+        std::istringstream stream(hex);
+        std::string line;
+        while (std::getline(stream, line)) {
+            binaryElements.push_back(text(line) | color(Color::GrayLight));
+        }
+        return vbox(std::move(binaryElements));
     }
 
-    constexpr std::size_t MAX_DISPLAY_CHARS = 8192;
-    std::string sanitized = SanitizeText(body, MAX_DISPLAY_CHARS);
-    if (body.size() > MAX_DISPLAY_CHARS) {
-        sanitized += "\n\n[ ... Body truncated for TUI display (showing " +
-                     std::to_string(MAX_DISPLAY_CHARS) + " of " + std::to_string(body.size()) + " bytes) ... ]";
+    // Text body: format line-by-line (preserves all line breaks and indentation)
+    Elements textLines;
+    constexpr std::size_t MAX_LINES = 250;
+    std::istringstream stream(body);
+    std::string line;
+    std::size_t lineCount = 0;
+    while (std::getline(stream, line) && lineCount < MAX_LINES) {
+        if (!line.empty() && line.back() == '\r') {
+            line.pop_back();
+        }
+        textLines.push_back(text(SanitizeText(line, 512)) | color(Color::White));
+        lineCount++;
     }
-    return sanitized;
+
+    if (stream.good()) {
+        textLines.push_back(text("\n[ ... Remaining lines truncated for TUI performance ... ]") | dim);
+    }
+
+    return vbox(std::move(textLines));
 }
 
-std::string FormatHeaders(const std::vector<std::pair<std::string, std::string>>& headers) {
-    std::ostringstream oss;
-    for (const auto& h : headers) {
-        std::string key = SanitizeText(h.first, 128);
-        std::string val = SanitizeText(h.second, 512);
-        oss << key << ": " << val << "\n";
+Element FormatHttpRequest(const HttpRequest& req, bool isHttps, const std::string& host) {
+    Elements elements;
+    // Method line: GET /path HTTP/1.1
+    elements.push_back(hbox({
+        text(req.method + " ") | bold | color(Color::Cyan),
+        text(SanitizeText(req.url, 256) + " ") | bold | color(Color::White),
+        text(req.version) | dim,
+    }));
+    elements.push_back(separatorLight());
+
+    // Host & Scheme info
+    elements.push_back(hbox({
+        text("Host: ") | bold | color(Color::BlueLight),
+        text(host + (isHttps ? " (HTTPS)" : " (HTTP)")) | color(Color::White),
+    }));
+
+    // Headers
+    for (const auto& [k, v] : req.headers) {
+        if (k == "Host") continue;
+        elements.push_back(hbox({
+            text(SanitizeText(k, 64) + ": ") | bold | color(Color::BlueLight),
+            text(SanitizeText(v, 256)) | color(Color::White),
+        }));
     }
-    return oss.str();
+
+    // Body
+    if (!req.body.empty()) {
+        elements.push_back(separatorLight());
+        elements.push_back(text("--- Request Body (" + std::to_string(req.body.size()) + " bytes) ---") | dim);
+        elements.push_back(FormatBodyElement(req.body, req.header("Content-Type")));
+    }
+
+    return vbox(std::move(elements));
+}
+
+Element FormatHttpResponse(const HttpResponse& res) {
+    Elements elements;
+    // Status line: HTTP/1.1 200 OK
+    Color statusColor = (res.statusCode < 300) ? Color::Green :
+                        (res.statusCode < 400) ? Color::Yellow : Color::Red;
+
+    elements.push_back(hbox({
+        text(res.version + " ") | dim,
+        text(std::to_string(res.statusCode) + " " + SanitizeText(res.statusText, 64)) | bold | color(statusColor),
+    }));
+    elements.push_back(separatorLight());
+
+    // Headers
+    for (const auto& [k, v] : res.headers) {
+        elements.push_back(hbox({
+            text(SanitizeText(k, 64) + ": ") | bold | color(Color::BlueLight),
+            text(SanitizeText(v, 256)) | color(Color::White),
+        }));
+    }
+
+    // Body
+    if (!res.body.empty()) {
+        elements.push_back(separatorLight());
+        elements.push_back(text("--- Response Body (" + std::to_string(res.body.size()) + " bytes) ---") | dim);
+        elements.push_back(FormatBodyElement(res.body, res.header("Content-Type")));
+    }
+
+    return vbox(std::move(elements));
 }
 
 std::string BuildMenuLabel(const HttpTransaction& tx) {
@@ -198,31 +276,23 @@ ftxui::Component MakeHistoryTab(
 
         const auto& active = (*entries)[idx];
 
-        // Format Request Details
-        std::ostringstream reqDetail;
+        Element reqContent;
         if (active.request) {
-            reqDetail << active.request->method << " " << active.request->url << " " << active.request->version << "\n";
-            reqDetail << FormatHeaders(active.request->headers) << "\n";
-            std::string reqContentType = active.request->header("Content-Type");
-            reqDetail << FormatBody(active.request->body, reqContentType);
+            reqContent = FormatHttpRequest(*active.request, active.is_https, active.host);
         } else {
-            reqDetail << "(No request details available)";
+            reqContent = text("(No request details available)") | dim;
         }
 
-        // Format Response Details
-        std::ostringstream resDetail;
+        Element resContent;
         if (active.response) {
-            resDetail << active.response->version << " " << active.response->statusCode << " " << active.response->statusText << "\n";
-            resDetail << FormatHeaders(active.response->headers) << "\n";
-            std::string resContentType = active.response->header("Content-Type");
-            resDetail << FormatBody(active.response->body, resContentType);
+            resContent = FormatHttpResponse(*active.response);
         } else {
-            resDetail << "(Response pending...)";
+            resContent = text("(Response pending...)") | dim;
         }
 
         auto reqPanel = Widgets::Panel(
             "Request: " + (active.request ? active.request->method : "?") + " " + active.host + (active.is_https ? " (HTTPS)" : " (HTTP)"),
-            paragraph(reqDetail.str()) | vscroll_indicator | yframe
+            vbox({reqContent}) | vscroll_indicator | yframe | flex
         );
 
         std::string statusTitle = "Response";
@@ -231,7 +301,7 @@ ftxui::Component MakeHistoryTab(
         }
         auto resPanel = Widgets::Panel(
             statusTitle,
-            paragraph(resDetail.str()) | vscroll_indicator | yframe
+            vbox({resContent}) | vscroll_indicator | yframe | flex
         );
 
         auto content = vbox(Elements{reqPanel | flex, resPanel | flex});

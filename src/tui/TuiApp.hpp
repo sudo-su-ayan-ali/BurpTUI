@@ -6,6 +6,7 @@
 #include <ftxui/component/screen_interactive.hpp>
 #include <memory>
 #include <functional>
+#include <atomic>
 
 namespace BurpTUI {
 
@@ -24,6 +25,7 @@ private:
     ftxui::Component root_;
     int activeTab_ = 0;
     std::vector<std::string> tabNames_;
+    std::atomic<bool> updatePending_{false};
     void buildLayout();
 };
 

@@ -23,7 +23,10 @@ TuiApp::~TuiApp() = default;
 
 std::function<void()> TuiApp::getUpdateTrigger() {
     return [this]() {
-        screen_.PostEvent(ftxui::Event::Custom);
+        bool expected = false;
+        if (updatePending_.compare_exchange_strong(expected, true)) {
+            screen_.PostEvent(ftxui::Event::Custom);
+        }
     };
 }
 
@@ -64,8 +67,7 @@ void TuiApp::buildLayout() {
 
     root_ = CatchEvent(root_, [=, this](Event event) {
         if (event == Event::Custom) {
-            // Always dispatch Custom event to HistoryTab so queue is drained
-            // even when user is on another tab (Proxy, Repeater, etc.)
+            updatePending_.store(false);
             historyTab->OnEvent(Event::Custom);
             return false;
         }
