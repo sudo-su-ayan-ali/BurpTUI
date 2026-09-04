@@ -72,8 +72,15 @@ ftxui::Component MakeProxyTab() {
                 filler(),
             });
         } else {
-            interceptedRequestDetails = text("  (No requests currently intercepted. Toggle intercept ON to capture.)") 
-                | dim | center | flex;
+            interceptedRequestDetails = vbox(Elements{
+                filler(),
+                text("Proxy is actively listening on 127.0.0.1:8080") | bold | center,
+                text("Live traffic is streaming directly to the [ History ] tab.") | center,
+                text("Press [Tab] to switch to History and inspect captured traffic.") | color(Color::Green) | center,
+                text("") | center,
+                text("Note: For HTTPS interception, install ./ca/ca.crt into your browser.") | dim | center,
+                filler(),
+            });
         }
 
         return vbox(Elements{
